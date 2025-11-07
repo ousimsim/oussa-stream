@@ -3,1968 +3,451 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OussaStream - Your Premium Movie Platform</title>
+    <title>OussaStream</title>
     <link rel="icon" type="image/png" href="https://i.ibb.co/MD3HFP46/Untitled-Design-1-Edited-Edited.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <style>
-        :root {
-            /* Netflix Theme Colors */
-            --netflix-red: #E50914;
-            --netflix-dark: #221F1F;
-            --netflix-darker: #141414;
-            --netflix-gray: #564D4D;
-            --netflix-light: #F5F5F1;
-            
-            /* Shadows */
-            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
-            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.2);
-            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.25);
-            --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.35);
-            
-            /* Transitions */
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--netflix-darker);
-            color: var(--netflix-light);
-            line-height: 1.6;
-            overflow-x: hidden;
-        }
-
-        /* Netflix Navbar */
-        .netflix-navbar {
-            background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, transparent 100%);
-            backdrop-filter: blur(10px);
-            transition: var(--transition);
-            padding: 1rem 0;
-            z-index: 1000;
-        }
-
-        .netflix-navbar.scrolled {
-            background: var(--netflix-dark);
-            box-shadow: var(--shadow-md);
-        }
-
-        .navbar-logo {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            box-shadow: var(--shadow-sm);
-        }
-
-        .brand-text {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: var(--netflix-red);
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .nav-link {
-            color: var(--netflix-light) !important;
-            font-weight: 500;
-            margin: 0 0.5rem;
-            transition: var(--transition);
-            position: relative;
-        }
-
-        .nav-link:hover,
-        .nav-link.active {
-            color: var(--netflix-red) !important;
-        }
-
-        .nav-link::after {
-            content: '';
-            position: absolute;
-            bottom: -5px;
-            left: 0;
-            width: 0;
-            height: 2px;
-            background: var(--netflix-red);
-            transition: var(--transition);
-        }
-
-        .nav-link:hover::after,
-        .nav-link.active::after {
-            width: 100%;
-        }
-
-        /* Search Suggestions */
-        .search-suggestions {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: var(--netflix-dark);
-            border-radius: 8px;
-            box-shadow: var(--shadow-lg);
-            max-height: 300px;
-            overflow-y: auto;
-            z-index: 1000;
-            display: none;
-        }
-
-        .suggestion-item {
-            padding: 1rem;
-            border-bottom: 1px solid var(--netflix-gray);
-            cursor: pointer;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-        }
-
-        .suggestion-item:hover {
-            background: var(--netflix-gray);
-        }
-
-        .suggestion-item:last-child {
-            border-bottom: none;
-        }
-
-        .suggestion-poster {
-            width: 40px;
-            height: 60px;
-            object-fit: cover;
-            border-radius: 4px;
-            margin-right: 1rem;
-        }
-
-        .suggestion-info h6 {
-            margin: 0;
-            color: var(--netflix-light);
-        }
-
-        .suggestion-info small {
-            color: #999;
-        }
-
-        /* Hero Section with Custom Background */
-        .hero-section {
-            height: 100vh;
-            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.7)), 
-                        url('https://i.ibb.co/27YwDQjZ/Untitled-banner.png') center/cover;
-            display: flex;
-            align-items: center;
-            position: relative;
-            overflow: hidden;
-            background-attachment: fixed;
-        }
-
-        /* Add overlay pattern for extra visual appeal */
-        .hero-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.3) 100%);
-            z-index: 1;
-        }
-
-        .hero-content {
-            max-width: 700px;
-            z-index: 2;
-            position: relative;
-        }
-
-        .hero-title {
-            font-size: 4.5rem;
-            font-weight: 900;
-            margin-bottom: 1.5rem;
-            text-shadow: 3px 3px 12px rgba(0,0,0,0.8);
-            background: linear-gradient(135deg, var(--netflix-light), var(--netflix-red));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: heroGlow 3s ease-in-out infinite alternate;
-            line-height: 1.1;
-        }
-
-        @keyframes heroGlow {
-            0% { filter: drop-shadow(0 0 15px rgba(229, 9, 20, 0.4)); }
-            100% { filter: drop-shadow(0 0 25px rgba(229, 9, 20, 0.8)); }
-        }
-
-        .hero-subtitle {
-            font-size: 1.4rem;
-            margin-bottom: 2.5rem;
-            opacity: 0.95;
-            text-shadow: 2px 2px 6px rgba(0,0,0,0.8);
-            line-height: 1.5;
-            max-width: 600px;
-        }
-
-        .btn-netflix {
-            background: var(--netflix-red);
-            border: none;
-            padding: 1.2rem 3rem;
-            font-size: 1.2rem;
-            font-weight: 600;
-            border-radius: 8px;
-            box-shadow: var(--shadow-lg);
-            transition: var(--transition);
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-netflix::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: left 0.5s;
-        }
-
-        .btn-netflix:hover::before {
-            left: 100%;
-        }
-
-        .btn-netflix:hover {
-            background: #f40612;
-            transform: translateY(-3px);
-            box-shadow: var(--shadow-xl);
-        }
-
-        /* New Movies Section */
-        .new-movies-section {
-            padding: 5rem 0;
-            background: var(--netflix-darker);
-            position: relative;
-        }
-
-        .new-movies-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 100px;
-            background: linear-gradient(180deg, rgba(20,20,20,0) 0%, var(--netflix-darker) 100%);
-            z-index: 1;
-        }
-
-        .section-title {
-            font-size: 2.8rem;
-            font-weight: 700;
-            margin-bottom: 0.8rem;
-            color: var(--netflix-light);
-            text-align: center;
-            position: relative;
-            z-index: 2;
-        }
-
-        .section-subtitle {
-            font-size: 1.2rem;
-            color: #999;
-            margin-bottom: 4rem;
-            text-align: center;
-            position: relative;
-            z-index: 2;
-        }
-
-        /* Movie Grid Section */
-        .movies-section {
-            padding: 4rem 0;
-            background: var(--netflix-darker);
-        }
-
-        /* Search and Filter Bar */
-        .search-filter-bar {
-            background: var(--netflix-dark);
-            padding: 2rem;
-            border-radius: 15px;
-            box-shadow: var(--shadow-md);
-            margin-bottom: 3rem;
-            position: relative;
-        }
-
-        .search-input {
-            background: var(--netflix-darker);
-            border: 2px solid transparent;
-            border-radius: 8px;
-            color: var(--netflix-light);
-            padding: 0.75rem 1rem;
-            transition: var(--transition);
-        }
-
-        .search-input:focus {
-            background: var(--netflix-darker);
-            border-color: var(--netflix-red);
-            color: var(--netflix-light);
-            box-shadow: 0 0 0 0.2rem rgba(229, 9, 20, 0.25);
-        }
-
-        .filter-btn {
-            background: var(--netflix-gray);
-            border: none;
-            color: var(--netflix-light);
-            padding: 0.75rem 1.5rem;
-            border-radius: 25px;
-            margin: 0.25rem;
-            transition: var(--transition);
-            font-weight: 500;
-        }
-
-        .filter-btn:hover,
-        .filter-btn.active {
-            background: var(--netflix-red);
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-sm);
-        }
-
-        /* Movie Cards */
-        .movie-card {
-            background: var(--netflix-dark);
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: var(--shadow-md);
-            transition: var(--transition);
-            position: relative;
-            height: 100%;
-            cursor: pointer;
-        }
-
-        .movie-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: var(--shadow-xl);
-            z-index: 10;
-        }
-
-        .movie-poster {
-            width: 100%;
-            height: 300px;
-            object-fit: cover;
-            transition: var(--transition);
-        }
-
-        .movie-card:hover .movie-poster {
-            transform: scale(1.1);
-        }
-
-        .movie-info {
-            padding: 1.5rem;
-            position: relative;
-        }
-
-        .movie-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            color: var(--netflix-light);
-        }
-
-        .movie-type {
-            background: var(--netflix-red);
-            color: white;
-            padding: 0.3rem 0.8rem;
-            border-radius: 15px;
-            font-size: 0.8rem;
-            font-weight: 500;
-            display: inline-block;
-            margin-bottom: 0.5rem;
-        }
-
-        .movie-year {
-            color: #999;
-            font-size: 0.9rem;
-            margin-left: 0.5rem;
-        }
-
-        .movie-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(transparent, rgba(0,0,0,0.8));
-            opacity: 0;
-            transition: var(--transition);
-            display: flex;
-            align-items: flex-end;
-            padding: 1.5rem;
-        }
-
-        .movie-card:hover .movie-overlay {
-            opacity: 1;
-        }
-
-        .play-btn {
-            background: var(--netflix-red);
-            border: none;
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: var(--shadow-lg);
-            transition: var(--transition);
-        }
-
-        .play-btn:hover {
-            transform: scale(1.1);
-            background: #f40612;
-        }
-
-        /* Movie Page */
-        .movie-page {
-            min-height: 100vh;
-            background: var(--netflix-darker);
-            padding: 2rem 0;
-        }
-
-        .movie-player {
-            background: var(--netflix-dark);
-            border-radius: 15px;
-            padding: 2rem;
-            box-shadow: var(--shadow-lg);
-            margin-bottom: 2rem;
-        }
-
-        .movie-video {
-            width: 100%;
-            height: 500px;
-            border-radius: 10px;
-            background: #000;
-        }
-
-        .movie-details {
-            background: var(--netflix-dark);
-            border-radius: 15px;
-            padding: 2rem;
-            box-shadow: var(--shadow-lg);
-        }
-
-        .movie-meta {
-            display: flex;
-            align-items: center;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-
-        .back-btn {
-            background: var(--netflix-gray);
-            border: none;
-            color: var(--netflix-light);
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            transition: var(--transition);
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            margin-bottom: 2rem;
-        }
-
-        .back-btn:hover {
-            background: var(--netflix-red);
-            color: white;
-            transform: translateY(-2px);
-        }
-
-        /* Pagination */
-        .pagination-container {
-            text-align: center;
-            margin-top: 3rem;
-            padding: 2rem;
-        }
-
-        .pagination-info {
-            margin-bottom: 1.5rem;
-            color: #999;
-            font-size: 1.1rem;
-        }
-
-        .pagination-btn {
-            background: var(--netflix-dark);
-            border: 2px solid var(--netflix-gray);
-            color: var(--netflix-light);
-            padding: 0.75rem 1.5rem;
-            margin: 0.25rem;
-            border-radius: 8px;
-            font-weight: 500;
-            transition: var(--transition);
-            cursor: pointer;
-        }
-
-        .pagination-btn:hover,
-        .pagination-btn.active {
-            background: var(--netflix-red);
-            border-color: var(--netflix-red);
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-sm);
-        }
-
-        .pagination-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        /* Admin Panel */
-        .admin-panel {
-            background: var(--netflix-dark);
-            border-radius: 15px;
-            padding: 2rem;
-            box-shadow: var(--shadow-lg);
-            margin: 2rem 0;
-        }
-
-        .admin-header {
-            background: linear-gradient(135deg, var(--netflix-red), #c5070e);
-            color: white;
-            padding: 1.5rem;
-            border-radius: 12px;
-            margin-bottom: 2rem;
-            text-align: center;
-            box-shadow: var(--shadow-md);
-        }
-
-        .admin-form {
-            background: var(--netflix-darker);
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: inset 0 2px 10px rgba(0,0,0,0.2);
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-label {
-            color: var(--netflix-light);
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            display: block;
-        }
-
-        .form-control {
-            background: var(--netflix-dark);
-            border: 2px solid var(--netflix-gray);
-            border-radius: 8px;
-            color: var(--netflix-light);
-            padding: 0.75rem;
-            transition: var(--transition);
-        }
-
-        .form-control:focus {
-            background: var(--netflix-dark);
-            border-color: var(--netflix-red);
-            color: var(--netflix-light);
-            box-shadow: 0 0 0 0.2rem rgba(229, 9, 20, 0.25);
-        }
-
-        .new-movie-toggle {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .toggle-switch {
-            position: relative;
-            width: 60px;
-            height: 30px;
-            background: var(--netflix-gray);
-            border-radius: 15px;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .toggle-switch.active {
-            background: var(--netflix-red);
-        }
-
-        .toggle-slider {
-            position: absolute;
-            top: 3px;
-            left: 3px;
-            width: 24px;
-            height: 24px;
-            background: white;
-            border-radius: 50%;
-            transition: var(--transition);
-        }
-
-        .toggle-switch.active .toggle-slider {
-            transform: translateX(30px);
-        }
-
-        /* Login Modal */
-        .login-modal {
-            background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(10px);
-        }
-
-        .login-form {
-            background: var(--netflix-dark);
-            border-radius: 15px;
-            box-shadow: var(--shadow-xl);
-        }
-
-        /* Footer */
-        .netflix-footer {
-            background: linear-gradient(135deg, var(--netflix-darker), var(--netflix-dark));
-            color: var(--netflix-light);
-            padding: 3rem 0 2rem;
-            margin-top: 4rem;
-            box-shadow: inset 0 4px 20px rgba(0,0,0,0.3);
-        }
-
-        .footer-brand {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        .footer-logo {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            margin-bottom: 1rem;
-            box-shadow: var(--shadow-md);
-        }
-
-        .footer-brand-name {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--netflix-red);
-            margin-bottom: 0.5rem;
-        }
-
-        .footer-tagline {
-            font-size: 1.1rem;
-            color: #999;
-            margin-bottom: 1.5rem;
-        }
-
-        .footer-social {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .social-btn {
-            width: 50px;
-            height: 50px;
-            background: var(--netflix-gray);
-            border: none;
-            border-radius: 50%;
-            color: var(--netflix-light);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: var(--transition);
-            text-decoration: none;
-        }
-
-        .social-btn:hover {
-            background: var(--netflix-red);
-            color: white;
-            transform: translateY(-3px);
-            box-shadow: var(--shadow-md);
-        }
-
-        .footer-copyright {
-            text-align: center;
-            padding-top: 2rem;
-            border-top: 1px solid var(--netflix-gray);
-            color: #999;
-        }
-
-        .copyright-text {
-            font-size: 0.95rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .creator-credit {
-            font-weight: 600;
-            color: var(--netflix-red);
-            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
-        }
-
-        /* Loading Overlay */
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--netflix-darker);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            transition: opacity 0.5s ease;
-        }
-
-        .loading-content {
-            text-align: center;
-        }
-
-        .loading-spinner {
-            width: 60px;
-            height: 60px;
-            border: 4px solid var(--netflix-gray);
-            border-top: 4px solid var(--netflix-red);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 1rem;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .loading-text {
-            font-size: 1.2rem;
-            color: var(--netflix-light);
-            font-weight: 500;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .hero-title {
-                font-size: 3rem;
-            }
-            
-            .hero-subtitle {
-                font-size: 1.2rem;
-            }
-            
-            .section-title {
-                font-size: 2.2rem;
-            }
-            
-            .movie-card {
-                margin-bottom: 2rem;
-            }
-            
-            .search-filter-bar {
-                padding: 1.5rem;
-            }
-            
-            .pagination-btn {
-                padding: 0.5rem 1rem;
-                font-size: 0.9rem;
-            }
-
-            .movie-video {
-                height: 250px;
-            }
-
-            .btn-netflix {
-                padding: 1rem 2rem;
-                font-size: 1rem;
-            }
-        }
-
-        /* Animation Classes */
-        .fade-in {
-            opacity: 0;
-            transform: translateY(30px);
-            transition: all 0.8s ease;
-        }
-
-        .fade-in.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .slide-in-left {
-            opacity: 0;
-            transform: translateX(-50px);
-            transition: all 1s ease;
-        }
-
-        .slide-in-left.visible {
-            opacity: 1;
-            transform: translateX(0);
-        }
-
-        .slide-in-right {
-            opacity: 0;
-            transform: translateX(50px);
-            transition: all 1s ease;
-        }
-
-        .slide-in-right.visible {
-            opacity: 1;
-            transform: translateX(0);
-        }
-
-        /* Notification Toast */
-        .toast-container {
-            position: fixed;
-            top: 100px;
-            right: 20px;
-            z-index: 10000;
-        }
-
-        .toast {
-            background: var(--netflix-dark);
-            color: var(--netflix-light);
-            border: 1px solid var(--netflix-red);
-            box-shadow: var(--shadow-lg);
-        }
-
-        .toast-success {
-            border-color: #28a745;
-        }
-
-        .toast-error {
-            border-color: #dc3545;
-        }
-
-        /* Hidden by default */
-        .hidden {
-            display: none !important;
-        }
-
-        /* No movies message */
-        .no-movies {
-            padding: 4rem 2rem;
-            text-align: center;
-        }
-
-        .no-movies i {
-            color: var(--netflix-gray);
-            margin-bottom: 1rem;
-        }
-
-        .no-movies h4 {
-            color: var(--netflix-light);
-            margin-bottom: 1rem;
-        }
-
-        .no-movies p {
-            color: #999;
-        }
-
-        /* Enhanced parallax effect for hero section */
-        @media (min-width: 768px) {
-            .hero-section {
-                background-attachment: fixed;
-            }
-        }
-
-        /* Additional visual enhancements */
-        .hero-content::before {
-            content: '';
-            position: absolute;
-            top: -20px;
-            left: -20px;
-            right: -20px;
-            bottom: -20px;
-            background: radial-gradient(ellipse at center, rgba(229, 9, 20, 0.1) 0%, transparent 70%);
-            z-index: -1;
-            border-radius: 20px;
-        }
-    </style>
+    
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="loading-overlay">
-        <div class="loading-content">
-            <div class="loading-spinner"></div>
-            <div class="loading-text">Loading OussaStream...</div>
-        </div>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading OussaStream...</div>
+    </div>
+    
+    <div class="connection-status connecting" id="connectionStatus">
+        <i class="fas fa-wifi"></i> Connecting to Firebase...
     </div>
 
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg netflix-navbar fixed-top" id="navbar">
+    <nav class="navbar navbar-expand-lg netflix-navbar fixed-top" id="mainNavbar">
         <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="#" onclick="showHome()">
-                <img src="https://i.ibb.co/MD3HFP46/Untitled-Design-1-Edited-Edited.png" alt="OussaStream" class="navbar-logo">
-                <span class="brand-text ms-2">OussaStream</span>
+            <a class="navbar-brand" href="#" onclick="app.showHome()">
+                <img src="https://i.ibb.co/MD3HFP46/Untitled-Design-1-Edited-Edited.png" alt="OussaStream">
             </a>
-
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
-
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav mx-auto">
+                <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link active" href="#" onclick="showHome()">Home</a>
+                        <a class="nav-link" href="#" onclick="app.showHome()">
+                            <i class="fas fa-home"></i> Home
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="showMovies()">Movies</a>
+                        <a class="nav-link" href="#" onclick="app.showMovies()">
+                            <i class="fas fa-film"></i> Movies
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="showAdminLogin()">Admin Panel</a>
+                        <a class="nav-link" href="#" onclick="app.showSeries()">
+                            <i class="fas fa-tv"></i> Series
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="app.showCollections()">
+                            <i class="fas fa-layer-group"></i> Collections
+                        </a>
                     </li>
                 </ul>
-                
-                <div class="navbar-nav">
-                    <div class="nav-item position-relative">
-                        <div class="input-group">
-                            <input type="text" class="form-control search-input" id="navSearchInput" 
-                                   placeholder="Search movies..." style="width: 200px;">
-                            <span class="input-group-text bg-dark border-0">
-                                <i class="fas fa-search text-light"></i>
-                            </span>
-                        </div>
-                        <div id="navSearchSuggestions" class="search-suggestions"></div>
-                    </div>
-                </div>
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="app.toggleAdmin()">
+                            <i class="fas fa-cog"></i> Admin
+                        </a>
+                    </li>
+                </ul>
             </div>
         </div>
     </nav>
 
-    <!-- Home Page -->
-    <div id="homePage" class="page-content">
-        <!-- Hero Section with Custom Background -->
-        <section class="hero-section">
+    <div id="mainContent">
+        <section class="hero-section" id="heroSection">
             <div class="container">
-                <div class="row">
-                    <div class="col-lg-10">
-                        <div class="hero-content slide-in-left">
-                            <h1 class="hero-title">OussaStream</h1>
-                            <p class="hero-subtitle">Discover and stream the greatest movies of all time with our premium collection. Experience cinema like never before.</p>
-                            <button class="btn btn-netflix" onclick="showMovies()">
-                                <i class="fas fa-play me-2"></i>Start Watching
-                            </button>
-                        </div>
+                <div class="row justify-content-center text-center">
+                    <div class="col-lg-8 hero-content">
+                        <h1 class="hero-title">OussaStream</h1>
+                        <p class="hero-subtitle">Discover and stream the greatest movies and series of all time with our premium collection. Experience cinema like never before.</p>
+                        <button class="cta-button" onclick="app.showMovies()">
+                            <i class="fas fa-play"></i> Start Watching
+                        </button>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- New Movies Section -->
-        <section class="new-movies-section">
+        <section class="section" id="newContentSection">
             <div class="container">
-                <div class="row">
-                    <div class="col-12">
-                        <h2 class="section-title fade-in">New Movies</h2>
-                        <p class="section-subtitle fade-in">Recently added to our collection</p>
+                <h2 class="section-title">New Releases</h2>
+                <p class="text-center" style="color: var(--netflix-gray); margin-bottom: 3rem;">Recently added to our collection</p>
+                <div class="content-grid" id="newContentGrid">
                     </div>
-                </div>
-
-                <div class="row" id="newMoviesGrid">
-                    <!-- New movies will be populated here -->
+                <div class="text-center">
+                    <button class="cta-button" onclick="app.showMovies()" style="margin-right: 1rem;">View All Movies</button>
+                    <button class="cta-button" onclick="app.showSeries()">View All Series</button>
                 </div>
             </div>
         </section>
-    </div>
 
-    <!-- Movies Page -->
-    <div id="moviesPage" class="page-content hidden">
-        <section class="movies-section" style="padding-top: 6rem;">
+        <section class="section" id="collectionsSection">
             <div class="container">
-                <div class="row">
-                    <div class="col-12 text-center">
-                        <h2 class="section-title fade-in">All Movies</h2>
-                        <p class="section-subtitle fade-in">Explore our complete movie collection</p>
-                    </div>
-                </div>
-
-                <!-- Search and Filter Bar -->
-                <div class="search-filter-bar fade-in">
-                    <div class="row align-items-center">
-                        <div class="col-lg-6 mb-3 mb-lg-0">
-                            <div class="input-group position-relative">
-                                <span class="input-group-text bg-dark border-0">
-                                    <i class="fas fa-search text-light"></i>
-                                </span>
-                                <input type="text" class="form-control search-input" id="searchInput" placeholder="Search movies...">
-                                <div id="searchSuggestions" class="search-suggestions"></div>
-                            </div>
+                <h2 class="section-title">Browse Collections</h2>
+                <div class="collections-grid" id="collectionsGrid">
+                    <div class="collection-card" onclick="app.filterContent('Drama', 'movies')">
+                        <div class="collection-icon">
+                            <i class="fas fa-heart"></i>
                         </div>
-                        <div class="col-lg-6">
-                            <div class="d-flex flex-wrap justify-content-end">
-                                <button class="filter-btn active" data-filter="all">All</button>
-                                <button class="filter-btn" data-filter="Action">Action</button>
-                                <button class="filter-btn" data-filter="Drama">Drama</button>
-                                <button class="filter-btn" data-filter="Comedy">Comedy</button>
-                                <button class="filter-btn" data-filter="Horror">Horror</button>
-                                <button class="filter-btn" data-filter="Romance">Romance</button>
-                                <button class="filter-btn" data-filter="Sci-Fi">Sci-Fi</button>
-                            </div>
-                        </div>
+                        <div class="collection-title">Drama</div>
+                        <div class="collection-count" id="dramaCount">0 movies & series</div>
                     </div>
-                </div>
-
-                <!-- Movies Grid -->
-                <div class="row" id="moviesGrid">
-                    <!-- Movies will be populated by JavaScript -->
-                </div>
-
-                <!-- Pagination -->
-                <div class="pagination-container">
-                    <div class="pagination-info" id="paginationInfo"></div>
-                    <div class="pagination-buttons" id="paginationButtons"></div>
+                    <div class="collection-card" onclick="app.filterContent('Action', 'movies')">
+                        <div class="collection-icon">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <div class="collection-title">Action</div>
+                        <div class="collection-count" id="actionCount">0 movies & series</div>
+                    </div>
+                    <div class="collection-card" onclick="app.filterContent('Comedy', 'movies')">
+                        <div class="collection-icon">
+                            <i class="fas fa-laugh"></i>
+                        </div>
+                        <div class="collection-title">Comedy</div>
+                        <div class="collection-count" id="comedyCount">0 movies & series</div>
+                    </div>
+                    <div class="collection-card" onclick="app.filterContent('Thriller', 'movies')">
+                        <div class="collection-icon">
+                            <i class="fas fa-mask"></i>
+                        </div>
+                        <div class="collection-title">Thriller</div>
+                        <div class="collection-count" id="thrillerCount">0 movies & series</div>
+                    </div>
                 </div>
             </div>
         </section>
     </div>
 
-    <!-- Movie Page -->
-    <div id="moviePage" class="page-content hidden movie-page">
-        <div class="container" style="padding-top: 6rem;">
-            <a href="#" class="back-btn" onclick="showMovies()">
-                <i class="fas fa-arrow-left me-2"></i>Back to Movies
-            </a>
-
-            <div class="row">
-                <div class="col-12">
-                    <div class="movie-player">
-                        <iframe id="movieVideo" class="movie-video" frameborder="0" allowfullscreen></iframe>
+    <div id="moviesPage" class="hidden">
+        <div style="height: 100px;"></div>
+        <div class="container">
+            <div class="section">
+                <h2 class="section-title">All Movies</h2>
+                
+                <div class="controls-container">
+                    <div class="search-container">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" class="search-input" id="movieSearchInput" placeholder="Search movies by title...">
+                    </div>
+                    <div class="filter-buttons" id="movieFilters">
+                        <button class="filter-btn active" onclick="app.filterMovies('all')">All</button>
+                        <button class="filter-btn" onclick="app.filterMovies('Drama')">Drama</button>
+                        <button class="filter-btn" onclick="app.filterMovies('Action')">Action</button>
+                        <button class="filter-btn" onclick="app.filterMovies('Comedy')">Comedy</button>
+                        <button class="filter-btn" onclick="app.filterMovies('Thriller')">Thriller</button>
+                        <button class="filter-btn" onclick="app.filterMovies('Horror')">Horror</button>
+                        <button class="filter-btn" onclick="app.filterMovies('Sci-Fi')">Sci-Fi</button>
+                        <button class="filter-btn" onclick="app.filterMovies('Romance')">Romance</button>
                     </div>
                 </div>
-            </div>
 
-            <div class="row">
-                <div class="col-12">
-                    <div class="movie-details">
-                        <h1 id="moviePageTitle" class="section-title mb-3"></h1>
-                        <div class="movie-meta">
-                            <span id="moviePageType" class="movie-type"></span>
-                            <span id="moviePageYear" class="movie-year"></span>
-                        </div>
-                        <p id="moviePageDescription" class="text-light"></p>
+                <div class="content-grid" id="moviesGrid">
                     </div>
-                </div>
+
+                <div class="pagination-container" id="moviePaginationContainer">
+                    </div>
             </div>
         </div>
     </div>
 
-    <!-- Admin Panel -->
-    <div id="adminPanel" class="page-content hidden">
-        <div class="container" style="padding-top: 6rem;">
-            <div class="admin-panel">
-                <div class="admin-header">
-                    <h2><i class="fas fa-cog me-2"></i>Admin Panel</h2>
-                    <p class="mb-0">Manage your movie collection</p>
+    <div id="seriesPage" class="hidden">
+        <div style="height: 100px;"></div>
+        <div class="container">
+            <div class="section">
+                <h2 class="section-title">All Series</h2>
+                
+                <div class="controls-container">
+                    <div class="search-container">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" class="search-input" id="seriesSearchInput" placeholder="Search series by title...">
+                    </div>
+                    <div class="filter-buttons" id="seriesFilters">
+                        <button class="filter-btn active" onclick="app.filterSeries('all')">All</button>
+                        <button class="filter-btn" onclick="app.filterSeries('Drama')">Drama</button>
+                        <button class="filter-btn" onclick="app.filterSeries('Action')">Action</button>
+                        <button class="filter-btn" onclick="app.filterSeries('Comedy')">Comedy</button>
+                        <button class="filter-btn" onclick="app.filterSeries('Thriller')">Thriller</button>
+                        <button class="filter-btn" onclick="app.filterSeries('Horror')">Horror</button>
+                        <button class="filter-btn" onclick="app.filterSeries('Sci-Fi')">Sci-Fi</button>
+                        <button class="filter-btn" onclick="app.filterSeries('Romance')">Romance</button>
+                    </div>
                 </div>
 
-                <div class="row">
-                    <div class="col-lg-6">
-                        <div class="admin-form">
-                            <h4 class="mb-3"><i class="fas fa-plus-circle me-2"></i>Add New Movie</h4>
-                            <form id="movieForm">
+                <div class="content-grid" id="seriesGrid">
+                    </div>
+
+                <div class="pagination-container" id="seriesPaginationContainer">
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="adminSection" class="hidden">
+        <div style="height: 100px;"></div>
+        <div class="container">
+            <div class="admin-section">
+                <div id="adminLogin">
+                    <h3 class="section-title">Admin Login</h3>
+                    <div class="login-form">
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-input" id="adminUsername" placeholder="Enter email">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-input" id="adminPassword" placeholder="Enter password">
+                        </div>
+                        <button class="btn-primary" onclick="app.adminLogin()">Login</button>
+                    </div>
+                </div>
+
+                <div id="adminPanel" class="hidden">
+                    <div class="admin-header">
+                        <div class="admin-title">
+                            <i class="fas fa-crown"></i>
+                            Admin Dashboard
+                        </div>
+                        <div class="admin-toggles">
+                            <button class="toggle-button" id="newMovieToggle" onclick="app.toggleNewMovieForm()">
+                                <i class="fas fa-plus"></i> Add New Movie
+                            </button>
+                            <button class="toggle-button series" id="newSeriesToggle" onclick="app.toggleNewSeriesForm()">
+                                <i class="fas fa-plus"></i> Add New Series
+                            </button>
+                            <button class="btn-secondary" onclick="app.adminLogout()">Logout</button>
+                        </div>
+                    </div>
+
+                    <div class="admin-stats">
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalMovies">0</div>
+                            <div class="stat-label">Total Movies</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalSeries">0</div>
+                            <div class="stat-label">Total Series</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalSeasons">0</div>
+                            <div class="stat-label">Total Seasons</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalGenres">0</div>
+                            <div class="stat-label">Genres</div>
+                        </div>
+                    </div>
+
+                    <div class="content-form hidden" id="movieForm">
+                        <h4 id="movieFormTitle">Add New Movie</h4>
+                        <form onsubmit="app.saveMovie(event)">
+                            <div class="form-row">
                                 <div class="form-group">
-                                    <label class="form-label">Movie Title</label>
-                                    <input type="text" class="form-control" id="movieTitle" required>
+                                    <label class="form-label">Movie Title *</label>
+                                    <input type="text" class="form-input" id="movieTitle" required>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">Year</label>
-                                    <input type="number" class="form-control" id="movieYear" min="1900" max="2030" required>
+                                    <label class="form-label">Year *</label>
+                                    <input type="number" class="form-input" id="movieYear" min="1900" max="2030" required>
                                 </div>
+                            </div>
+                            <div class="form-row">
                                 <div class="form-group">
-                                    <label class="form-label">Category</label>
-                                    <select class="form-control" id="movieType" required>
-                                        <option value="">Select Category</option>
+                                    <label class="form-label">Genre *</label>
+                                    <select class="form-select" id="movieType" required>
+                                        <option value="">Select Genre</option>
                                         <option value="Action">Action</option>
-                                        <option value="Drama">Drama</option>
                                         <option value="Comedy">Comedy</option>
+                                        <option value="Drama">Drama</option>
                                         <option value="Horror">Horror</option>
                                         <option value="Romance">Romance</option>
                                         <option value="Sci-Fi">Sci-Fi</option>
                                         <option value="Thriller">Thriller</option>
-                                        <option value="Crime">Crime</option>
-                                        <option value="Mystery">Mystery</option>
+                                        <option value="Documentary">Documentary</option>
+                                        <option value="Animation">Animation</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">Description</label>
-                                    <textarea class="form-control" id="movieDescription" rows="3" required></textarea>
+                                    <label class="form-label">Poster URL *</label>
+                                    <input type="url" class="form-input" id="moviePoster" required placeholder="https://...">
                                 </div>
-                                <div class="form-group">
-                                    <label class="form-label">Poster URL</label>
-                                    <input type="url" class="form-control" id="moviePoster" required>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Video URL (YouTube, Vimeo, etc.)</label>
-                                    <input type="url" class="form-control" id="movieLink" required>
-                                </div>
-                                <div class="form-group">
-                                    <div class="new-movie-toggle">
-                                        <label class="form-label">Mark as New Movie</label>
-                                        <div class="toggle-switch" id="newMovieToggle">
-                                            <div class="toggle-slider"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <button type="submit" class="btn btn-netflix w-100">
-                                    <i class="fas fa-plus me-2"></i>Add Movie
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-6">
-                        <div class="admin-form">
-                            <h4 class="mb-3"><i class="fas fa-list me-2"></i>Manage Movies</h4>
-                            <div id="adminMovieList" class="admin-movie-list">
-                                <!-- Admin movie list will be populated here -->
                             </div>
+                            <div class="form-group">
+                                <label class="form-label">Movie Link (Direct Link) *</label>
+                                <input type="url" class="form-input" id="movieLink" required placeholder="https://...">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Description *</label>
+                                <textarea class="form-textarea" id="movieDescription" required placeholder="Enter movie description..."></textarea>
+                            </div>
+                            <div style="display: flex; gap: 1rem;">
+                                <button type="submit" class="btn-primary">
+                                    <i class="fas fa-save"></i> Save Movie
+                                </button>
+                                <button type="button" class="btn-secondary" onclick="app.cancelMovieEdit()">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="content-form hidden" id="seriesForm">
+                        <h4 id="seriesFormTitle">Add New Series</h4>
+                        <form onsubmit="app.saveSeries(event)">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Series Title *</label>
+                                    <input type="text" class="form-input" id="seriesTitle" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Year *</label>
+                                    <input type="number" class="form-input" id="seriesYear" min="1900" max="2030" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Genre *</label>
+                                    <select class="form-select" id="seriesType" required>
+                                        <option value="">Select Genre</option>
+                                        <option value="Action">Action</option>
+                                        <option value="Comedy">Comedy</option>
+                                        <option value="Drama">Drama</option>
+                                        <option value="Horror">Horror</option>
+                                        <option value="Romance">Romance</option>
+                                        <option value="Sci-Fi">Sci-Fi</option>
+                                        <option value="Thriller">Thriller</option>
+                                        <option value="Documentary">Documentary</option>
+                                        <option value="Animation">Animation</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Poster URL *</label>
+                                    <input type="url" class="form-input" id="seriesPoster" required placeholder="https://...">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Description *</label>
+                                <textarea class="form-textarea" id="seriesDescription" required placeholder="Enter series description..."></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Seasons & Episodes</label>
+                                <div id="seasonsContainer">
+                                    </div>
+                                <button type="button" class="btn-add" onclick="app.addSeason()">
+                                    <i class="fas fa-plus"></i> Add Season
+                                </button>
+                            </div>
+
+                            <div style="display: flex; gap: 1rem;">
+                                <button type="submit" class="btn-primary">
+                                    <i class="fas fa-save"></i> Save Series
+                                </button>
+                                <button type="button" class="btn-secondary" onclick="app.cancelSeriesEdit()">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="content-grid" id="adminContentGrid">
                         </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="videoModal" class="modal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="app.closeVideoModal()">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="video-container">
+                <iframe id="contentPlayer" allowfullscreen></iframe>
+            </div>
+            <div class="modal-info">
+                <div class="modal-title" id="modalTitle"></div>
+                <div class="modal-meta">
+                    <span id="modalYear"></span>
+                    <span id="modalType"></span>
+                </div>
+                <div class="modal-description" id="modalDescription"></div>
+            </div>
+            <div class="episode-selector hidden" id="episodeSelector">
+                <div class="selector-row">
+                    <div>
+                        <div class="selector-label">Season</div>
+                        <select class="form-select" id="seasonSelect" onchange="app.updateEpisodeOptions()">
+                            <option value="">Select Season</option>
+                        </select>
+                    </div>
+                    <div>
+                        <div class="selector-label">Episode</div>
+                        <select class="form-select" id="episodeSelect">
+                            <option value="">Select Episode</option>
+                        </select>
+                    </div>
+                    <div>
+                        <button class="btn-play-episode" onclick="app.playSelectedEpisode()">
+                            <i class="fas fa-play"></i> Play
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Login Modal -->
-    <div class="modal fade login-modal" id="loginModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content login-form">
-                <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title text-light">
-                        <i class="fas fa-lock me-2"></i>Admin Login
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="loginForm">
-                        <div class="form-group mb-3">
-                            <label class="form-label">Username</label>
-                            <input type="text" class="form-control" id="username" required>
-                        </div>
-                        <div class="form-group mb-4">
-                            <label class="form-label">Password</label>
-                            <input type="password" class="form-control" id="password" required>
-                        </div>
-                        <button type="submit" class="btn btn-netflix w-100">
-                            <i class="fas fa-sign-in-alt me-2"></i>Login
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Footer -->
-    <footer class="netflix-footer">
+    <footer class="footer">
         <div class="container">
-            <div class="footer-brand">
-                <img src="https://i.ibb.co/MD3HFP46/Untitled-Design-1-Edited-Edited.png" alt="OussaStream" class="footer-logo">
-                <h3 class="footer-brand-name">OussaStream</h3>
-                <p class="footer-tagline">Your Premium Movie Streaming Experience</p>
-                
-                <div class="footer-social">
-                    <a href="#" class="social-btn"><i class="fab fa-facebook-f"></i></a>
-                    <a href="#" class="social-btn"><i class="fab fa-twitter"></i></a>
-                    <a href="#" class="social-btn"><i class="fab fa-instagram"></i></a>
-                    <a href="#" class="social-btn"><i class="fab fa-youtube"></i></a>
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>About OussaStream</h4>
+                    <p>Your destination for the greatest movies and series of all time. We curate the finest collection of entertainment from around the world.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <p><a href="#" onclick="app.showHome()">Home</a></p>
+                    <p><a href="#" onclick="app.showMovies()">Movies</a></p>
+                    <p><a href="#" onclick="app.showSeries()">Series</a></p>
+                    <p><a href="#" onclick="app.showCollections()">Collections</a></p>
+                </div>
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <p><a href="#">Help Center</a></p>
+                    <p><a href="https://www.instagram.com/aits.oussa/">Contact Us</a></p>
+                    <p><a href="#">Terms of Service</a></p>
+                </div>
+                <div class="footer-section">
+                    <h4>Connect</h4>
+                    <p>Follow us on social media for the latest updates</p>
+                    <div class="social-links">
+                        <a href="https://www.instagram.com/aits.oussa/" class="social-link"><i class="fab fa-instagram"></i></a>
+                    </div>
                 </div>
             </div>
-
-            <div class="footer-copyright">
-                <p class="copyright-text">
-                    © 2025 OussaStream. All rights reserved.
-                </p>
-                <p class="creator-credit">
-                    <i class="fas fa-heart text-danger"></i> 
-                    Created with love by <strong>Oussa</strong> 
-                    <i class="fas fa-heart text-danger"></i>
-                </p>
+            <div class="footer-bottom">
+                <p>&copy; 2025 OussaStream. All rights reserved. Made with <span style="color: var(--netflix-red);">❤</span> by Oussama ait salem.</p>
             </div>
         </div>
     </footer>
 
-    <!-- Toast Container -->
-    <div class="toast-container"></div>
-
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-    <script>
-        // Simple encryption for credentials (Base64 encoding)
-        const ENCRYPTED_CREDENTIALS = {
-            username: btoa('admin'), // admin
-            password: btoa('Oussama@123') // Oussama@123
-        };
-
-        class OussaStreamApp {
-            constructor() {
-                this.currentPage = 1;
-                this.moviesPerPage = 12;
-                this.currentFilter = 'all';
-                this.currentSearch = '';
-                this.isAdminLoggedIn = false;
-                this.movies = [];
-                this.editingMovieId = null;
-                this.currentMovie = null;
-                this.currentView = 'home';
-                this.newMovieToggleActive = false;
-
-                this.init();
-            }
-
-            init() {
-                this.loadMovies();
-                this.bindEvents();
-                this.showLoadingOverlay();
-                
-                // Show loading for 1 second then display content
-                setTimeout(() => {
-                    this.hideLoadingOverlay();
-                    this.showHome();
-                    this.initAnimations();
-                }, 1000);
-
-                this.initNavbarScroll();
-            }
-
-            loadMovies() {
-                const savedMovies = localStorage.getItem('oussastream-movies');
-                if (savedMovies) {
-                    this.movies = JSON.parse(savedMovies);
-                } else {
-                    // Sample movies with updated structure and proper video URLs
-                    this.movies = [
-                        {
-                            id: 1,
-                            title: "The Shawshank Redemption",
-                            year: 1994,
-                            type: "Drama",
-                            description: "Two imprisoned men bond over a number of years, finding solace and eventual redemption through acts of common decency.",
-                            poster: "https://images.unsplash.com/photo-1489599735946-c0e7e9f1f461?w=300&h=450&fit=crop",
-                            link: "https://www.youtube.com/embed/NmzuHjWmXOc",
-                            isNew: true
-                        },
-                        {
-                            id: 2,
-                            title: "The Dark Knight",
-                            year: 2008,
-                            type: "Action",
-                            description: "When the menace known as The Joker emerges, Batman must accept one of the greatest psychological and physical tests.",
-                            poster: "https://images.unsplash.com/photo-1531259736203-12f59215deef?w=300&h=450&fit=crop",
-                            link: "https://www.youtube.com/embed/EXeTwQWrcwY",
-                            isNew: true
-                        },
-                        {
-                            id: 3,
-                            title: "Pulp Fiction",
-                            year: 1994,
-                            type: "Drama",
-                            description: "The lives of two mob hitmen, a boxer, a gangster and his wife intertwine in four tales of violence and redemption.",
-                            poster: "https://images.unsplash.com/photo-1514306191717-452ec28c7814?w=300&h=450&fit=crop",
-                            link: "https://www.youtube.com/embed/s7EdQ4FqbhY",
-                            isNew: true
-                        },
-                        {
-                            id: 4,
-                            title: "Inception",
-                            year: 2010,
-                            type: "Action",
-                            description: "A thief who steals corporate secrets through dream-sharing technology is given the task of planting an idea.",
-                            poster: "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=300&h=450&fit=crop",
-                            link: "https://www.youtube.com/embed/YoHD9XEInc0",
-                            isNew: true
-                        },
-                        {
-                            id: 5,
-                            title: "Interstellar",
-                            year: 2014,
-                            type: "Sci-Fi",
-                            description: "A team of explorers travel through a wormhole in space in an attempt to ensure humanity's survival.",
-                            poster: "https://images.unsplash.com/photo-1446776653964-20c1d3a81b06?w=300&h=450&fit=crop",
-                            link: "https://www.youtube.com/embed/zSWdZVtXT7E",
-                            isNew: true
-                        },
-                        {
-                            id: 6,
-                            title: "The Matrix",
-                            year: 1999,
-                            type: "Action",
-                            description: "A computer programmer discovers reality isn't what it seems when mysterious rebels contact him.",
-                            poster: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=300&h=450&fit=crop",
-                            link: "https://www.youtube.com/embed/vKQi3bBA1y8",
-                            isNew: false
-                        },
-                        {
-                            id: 7,
-                            title: "Forrest Gump",
-                            year: 1994,
-                            type: "Drama",
-                            description: "The presidencies of Kennedy and Johnson through the eyes of an Alabama man with an IQ of 75.",
-                            poster: "https://images.unsplash.com/photo-1521714161819-15534968fc5f?w=300&h=450&fit=crop",
-                            link: "https://www.youtube.com/embed/bLvqoHBptjg",
-                            isNew: false
-                        }
-                    ];
-                    this.saveMovies();
-                }
-            }
-
-            saveMovies() {
-                localStorage.setItem('oussastream-movies', JSON.stringify(this.movies));
-            }
-
-            bindEvents() {
-                // Search functionality for both search bars
-                const searchInput = document.getElementById('searchInput');
-                const navSearchInput = document.getElementById('navSearchInput');
-                
-                if (searchInput) {
-                    searchInput.addEventListener('input', (e) => {
-                        this.handleSearch(e.target.value, 'searchSuggestions');
-                    });
-                }
-
-                if (navSearchInput) {
-                    navSearchInput.addEventListener('input', (e) => {
-                        this.handleSearch(e.target.value, 'navSearchSuggestions');
-                    });
-                }
-
-                // Hide suggestions when clicking outside
-                document.addEventListener('click', (e) => {
-                    if (!e.target.closest('.search-suggestions') && !e.target.closest('.search-input')) {
-                        const suggestions1 = document.getElementById('searchSuggestions');
-                        const suggestions2 = document.getElementById('navSearchSuggestions');
-                        if (suggestions1) suggestions1.style.display = 'none';
-                        if (suggestions2) suggestions2.style.display = 'none';
-                    }
-                });
-
-                // Filter buttons
-                document.querySelectorAll('.filter-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                        e.target.classList.add('active');
-                        this.currentFilter = e.target.dataset.filter;
-                        this.currentPage = 1;
-                        this.displayMovies();
-                    });
-                });
-
-                // Admin login form
-                const loginForm = document.getElementById('loginForm');
-                if (loginForm) {
-                    loginForm.addEventListener('submit', (e) => {
-                        e.preventDefault();
-                        this.handleAdminLogin();
-                    });
-                }
-
-                // Movie form
-                const movieForm = document.getElementById('movieForm');
-                if (movieForm) {
-                    movieForm.addEventListener('submit', (e) => {
-                        e.preventDefault();
-                        this.handleMovieSubmit();
-                    });
-                }
-
-                // New movie toggle
-                const newMovieToggle = document.getElementById('newMovieToggle');
-                if (newMovieToggle) {
-                    newMovieToggle.addEventListener('click', () => {
-                        this.toggleNewMovie();
-                    });
-                }
-            }
-
-            handleSearch(value, suggestionElementId) {
-                const suggestionElement = document.getElementById(suggestionElementId);
-                if (!suggestionElement) return;
-                
-                if (value.length < 2) {
-                    suggestionElement.style.display = 'none';
-                    return;
-                }
-
-                const filteredMovies = this.movies.filter(movie =>
-                    movie.title.toLowerCase().includes(value.toLowerCase()) ||
-                    movie.type.toLowerCase().includes(value.toLowerCase())
-                );
-
-                if (filteredMovies.length > 0) {
-                    suggestionElement.innerHTML = filteredMovies.slice(0, 5).map(movie => `
-                        <div class="suggestion-item" onclick="app.watchMovie(${movie.id})">
-                            <img src="${movie.poster}" alt="${movie.title}" class="suggestion-poster">
-                            <div class="suggestion-info">
-                                <h6>${movie.title}</h6>
-                                <small>${movie.type} • ${movie.year}</small>
-                            </div>
-                        </div>
-                    `).join('');
-                    suggestionElement.style.display = 'block';
-                } else {
-                    suggestionElement.style.display = 'none';
-                }
-            }
-
-            showLoadingOverlay() {
-                const overlay = document.getElementById('loadingOverlay');
-                if (overlay) {
-                    overlay.style.display = 'flex';
-                }
-            }
-
-            hideLoadingOverlay() {
-                const overlay = document.getElementById('loadingOverlay');
-                if (overlay) {
-                    overlay.style.opacity = '0';
-                    setTimeout(() => {
-                        overlay.style.display = 'none';
-                        overlay.style.opacity = '1';
-                    }, 500);
-                }
-            }
-
-            initNavbarScroll() {
-                window.addEventListener('scroll', () => {
-                    const navbar = document.getElementById('navbar');
-                    if (navbar) {
-                        if (window.scrollY > 100) {
-                            navbar.classList.add('scrolled');
-                        } else {
-                            navbar.classList.remove('scrolled');
-                        }
-                    }
-                });
-            }
-
-            initAnimations() {
-                const observerOptions = {
-                    threshold: 0.1,
-                    rootMargin: '0px 0px -50px 0px'
-                };
-
-                const observer = new IntersectionObserver((entries) => {
-                    entries.forEach(entry => {
-                        if (entry.isIntersecting) {
-                            entry.target.classList.add('visible');
-                        }
-                    });
-                }, observerOptions);
-
-                document.querySelectorAll('.fade-in, .slide-in-left, .slide-in-right').forEach(el => {
-                    observer.observe(el);
-                });
-            }
-
-            showHome() {
-                this.hideAllPages();
-                this.currentView = 'home';
-                const homePage = document.getElementById('homePage');
-                if (homePage) {
-                    homePage.classList.remove('hidden');
-                }
-                this.displayNewMovies();
-                this.updateNavActive('home');
-            }
-
-            showMovies() {
-                this.hideAllPages();
-                this.currentView = 'movies';
-                const moviesPage = document.getElementById('moviesPage');
-                if (moviesPage) {
-                    moviesPage.classList.remove('hidden');
-                }
-                this.displayMovies();
-                this.updateNavActive('movies');
-            }
-
-            showMoviePage() {
-                this.hideAllPages();
-                this.currentView = 'movie';
-                const moviePage = document.getElementById('moviePage');
-                if (moviePage) {
-                    moviePage.classList.remove('hidden');
-                }
-            }
-
-            showAdminPanel() {
-                this.hideAllPages();
-                this.currentView = 'admin';
-                const adminPanel = document.getElementById('adminPanel');
-                if (adminPanel) {
-                    adminPanel.classList.remove('hidden');
-                }
-                this.loadAdminMovieList();
-                this.updateNavActive('admin');
-            }
-
-            hideAllPages() {
-                document.querySelectorAll('.page-content').forEach(page => {
-                    page.classList.add('hidden');
-                });
-            }
-
-            updateNavActive(active) {
-                document.querySelectorAll('.nav-link').forEach(link => {
-                    link.classList.remove('active');
-                });
-                
-                // Set active based on current view
-                const homeLink = document.querySelector('a[onclick="showHome()"]');
-                const moviesLink = document.querySelector('a[onclick="showMovies()"]');
-                const adminLink = document.querySelector('a[onclick="showAdminLogin()"]');
-                
-                if (active === 'home' && homeLink) {
-                    homeLink.classList.add('active');
-                } else if (active === 'movies' && moviesLink) {
-                    moviesLink.classList.add('active');
-                } else if (active === 'admin' && adminLink) {
-                    adminLink.classList.add('active');
-                }
-            }
-
-            displayNewMovies() {
-                const newMovies = this.movies.filter(movie => movie.isNew).slice(0, 5);
-                const grid = document.getElementById('newMoviesGrid');
-                
-                if (!grid) return;
-                
-                if (newMovies.length === 0) {
-                    grid.innerHTML = `
-                        <div class="col-12">
-                            <div class="no-movies">
-                                <i class="fas fa-film fa-3x"></i>
-                                <h4>No new movies yet</h4>
-                                <p>New movies will appear here when added by admin</p>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    grid.innerHTML = newMovies.map((movie, index) => this.createMovieCardHTML(movie, index)).join('');
-                    
-                    // Animate cards
-                    setTimeout(() => {
-                        const movieCards = grid.querySelectorAll('.movie-card');
-                        movieCards.forEach((card, index) => {
-                            setTimeout(() => {
-                                card.style.opacity = '1';
-                                card.style.transform = 'translateY(0)';
-                            }, index * 100);
-                        });
-                    }, 100);
-                }
-            }
-
-            getFilteredMovies() {
-                let filtered = this.movies;
-
-                // Apply search filter
-                if (this.currentSearch) {
-                    filtered = filtered.filter(movie => 
-                        movie.title.toLowerCase().includes(this.currentSearch) ||
-                        movie.type.toLowerCase().includes(this.currentSearch)
-                    );
-                }
-
-                // Apply type filter
-                if (this.currentFilter !== 'all') {
-                    filtered = filtered.filter(movie => movie.type === this.currentFilter);
-                }
-
-                return filtered;
-            }
-
-            displayMovies() {
-                const filteredMovies = this.getFilteredMovies();
-                const startIndex = (this.currentPage - 1) * this.moviesPerPage;
-                const endIndex = startIndex + this.moviesPerPage;
-                const moviesToShow = filteredMovies.slice(startIndex, endIndex);
-
-                const grid = document.getElementById('moviesGrid');
-                if (!grid) return;
-
-                if (moviesToShow.length === 0) {
-                    grid.innerHTML = `
-                        <div class="col-12">
-                            <div class="no-movies">
-                                <i class="fas fa-search fa-3x"></i>
-                                <h4>No movies found</h4>
-                                <p>Try adjusting your search or filter criteria</p>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    grid.innerHTML = moviesToShow.map((movie, index) => this.createMovieCardHTML(movie, index)).join('');
-                    
-                    // Animate cards
-                    setTimeout(() => {
-                        const movieCards = grid.querySelectorAll('.movie-card');
-                        movieCards.forEach((card, index) => {
-                            setTimeout(() => {
-                                card.style.opacity = '1';
-                                card.style.transform = 'translateY(0)';
-                            }, index * 100);
-                        });
-                    }, 100);
-                }
-
-                this.updatePagination(filteredMovies.length);
-            }
-
-            createMovieCardHTML(movie, index) {
-                return `
-                    <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
-                        <div class="movie-card" style="opacity: 0; transform: translateY(30px);">
-                            <div class="position-relative">
-                                <img src="${movie.poster}" alt="${movie.title}" class="movie-poster">
-                                <div class="movie-overlay">
-                                    <button class="play-btn" onclick="app.watchMovie(${movie.id})">
-                                        <i class="fas fa-play text-white"></i>
-                                    </button>
-                                </div>
-                                ${movie.isNew ? '<div class="badge bg-danger position-absolute" style="top: 10px; left: 10px;">NEW</div>' : ''}
-                            </div>
-                            <div class="movie-info">
-                                <h5 class="movie-title">${movie.title}</h5>
-                                <div class="d-flex align-items-center mb-2">
-                                    <span class="movie-type">${movie.type}</span>
-                                    <span class="movie-year">${movie.year}</span>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <button class="btn btn-sm btn-outline-light" onclick="app.watchMovie(${movie.id})">
-                                        <i class="fas fa-play me-1"></i>Watch
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-
-            watchMovie(id) {
-                const movie = this.movies.find(m => m.id === id);
-                if (movie) {
-                    this.currentMovie = movie;
-                    this.showMoviePage();
-                    
-                    // Update movie page content
-                    const moviePageTitle = document.getElementById('moviePageTitle');
-                    const moviePageType = document.getElementById('moviePageType');
-                    const moviePageYear = document.getElementById('moviePageYear');
-                    const moviePageDescription = document.getElementById('moviePageDescription');
-                    const movieVideo = document.getElementById('movieVideo');
-                    
-                    if (moviePageTitle) moviePageTitle.textContent = movie.title;
-                    if (moviePageType) moviePageType.textContent = movie.type;
-                    if (moviePageYear) moviePageYear.textContent = movie.year;
-                    if (moviePageDescription) moviePageDescription.textContent = movie.description;
-                    if (movieVideo) movieVideo.src = movie.link;
-
-                    // Hide search suggestions
-                    const suggestions1 = document.getElementById('searchSuggestions');
-                    const suggestions2 = document.getElementById('navSearchSuggestions');
-                    if (suggestions1) suggestions1.style.display = 'none';
-                    if (suggestions2) suggestions2.style.display = 'none';
-                }
-            }
-
-            updatePagination(totalMovies) {
-                const totalPages = Math.ceil(totalMovies / this.moviesPerPage);
-                const info = document.getElementById('paginationInfo');
-                const buttons = document.getElementById('paginationButtons');
-
-                if (!info || !buttons) return;
-
-                // Update info
-                const startItem = totalMovies === 0 ? 0 : (this.currentPage - 1) * this.moviesPerPage + 1;
-                const endItem = Math.min(this.currentPage * this.moviesPerPage, totalMovies);
-                info.textContent = `Showing ${startItem}-${endItem} of ${totalMovies} movies`;
-
-                // Update buttons
-                buttons.innerHTML = '';
-
-                if (totalPages > 1) {
-                    // Previous button
-                    const prevBtn = document.createElement('button');
-                    prevBtn.className = `pagination-btn ${this.currentPage === 1 ? 'disabled' : ''}`;
-                    prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i> Previous';
-                    prevBtn.disabled = this.currentPage === 1;
-                    prevBtn.onclick = () => {
-                        if (this.currentPage > 1) {
-                            this.currentPage--;
-                            this.displayMovies();
-                        }
-                    };
-                    buttons.appendChild(prevBtn);
-
-                    // Page numbers
-                    for (let i = 1; i <= totalPages; i++) {
-                        if (i === 1 || i === totalPages || (i >= this.currentPage - 2 && i <= this.currentPage + 2)) {
-                            const pageBtn = document.createElement('button');
-                            pageBtn.className = `pagination-btn ${i === this.currentPage ? 'active' : ''}`;
-                            pageBtn.textContent = i;
-                            pageBtn.onclick = () => {
-                                this.currentPage = i;
-                                this.displayMovies();
-                            };
-                            buttons.appendChild(pageBtn);
-                        } else if (i === this.currentPage - 3 || i === this.currentPage + 3) {
-                            const dots = document.createElement('span');
-                            dots.className = 'pagination-dots';
-                            dots.textContent = '...';
-                            dots.style.color = 'var(--netflix-gray)';
-                            dots.style.padding = '0.75rem 0.5rem';
-                            buttons.appendChild(dots);
-                        }
-                    }
-
-                    // Next button
-                    const nextBtn = document.createElement('button');
-                    nextBtn.className = `pagination-btn ${this.currentPage === totalPages ? 'disabled' : ''}`;
-                    nextBtn.innerHTML = 'Next <i class="fas fa-chevron-right"></i>';
-                    nextBtn.disabled = this.currentPage === totalPages;
-                    nextBtn.onclick = () => {
-                        if (this.currentPage < totalPages) {
-                            this.currentPage++;
-                            this.displayMovies();
-                        }
-                    };
-                    buttons.appendChild(nextBtn);
-                }
-            }
-
-            showAdminLogin() {
-                if (this.isAdminLoggedIn) {
-                    this.showAdminPanel();
-                } else {
-                    const modal = new bootstrap.Modal(document.getElementById('loginModal'));
-                    modal.show();
-                }
-            }
-
-            handleAdminLogin() {
-                const username = document.getElementById('username').value;
-                const password = document.getElementById('password').value;
-
-                // Decrypt credentials and check
-                const validUsername = atob(ENCRYPTED_CREDENTIALS.username);
-                const validPassword = atob(ENCRYPTED_CREDENTIALS.password);
-
-                if (username === validUsername && password === validPassword) {
-                    this.isAdminLoggedIn = true;
-                    this.showToast('Login successful!', 'success');
-                    bootstrap.Modal.getInstance(document.getElementById('loginModal')).hide();
-                    this.showAdminPanel();
-                    
-                    // Clear form
-                    document.getElementById('loginForm').reset();
-                } else {
-                    this.showToast('Invalid credentials!', 'error');
-                }
-            }
-
-            toggleNewMovie() {
-                this.newMovieToggleActive = !this.newMovieToggleActive;
-                const toggle = document.getElementById('newMovieToggle');
-                if (toggle) {
-                    if (this.newMovieToggleActive) {
-                        toggle.classList.add('active');
-                    } else {
-                        toggle.classList.remove('active');
-                    }
-                }
-            }
-
-            handleMovieSubmit() {
-                const title = document.getElementById('movieTitle').value;
-                const year = parseInt(document.getElementById('movieYear').value);
-                const type = document.getElementById('movieType').value;
-                const description = document.getElementById('movieDescription').value;
-                const poster = document.getElementById('moviePoster').value;
-                const link = document.getElementById('movieLink').value;
-                const isNew = this.newMovieToggleActive;
-
-                if (this.editingMovieId) {
-                    // Update existing movie
-                    const index = this.movies.findIndex(m => m.id === this.editingMovieId);
-                    this.movies[index] = {
-                        ...this.movies[index],
-                        title, year, type, description, poster, link, isNew
-                    };
-                    this.showToast('Movie updated successfully!', 'success');
-                    this.editingMovieId = null;
-                } else {
-                    // Add new movie
-                    const newMovie = {
-                        id: Date.now(),
-                        title, year, type, description, poster, link, isNew
-                    };
-                    this.movies.push(newMovie);
-                    this.showToast('Movie added successfully!', 'success');
-                }
-
-                this.saveMovies();
-                if (this.currentView === 'movies') {
-                    this.displayMovies();
-                }
-                if (this.currentView === 'home') {
-                    this.displayNewMovies();
-                }
-                this.loadAdminMovieList();
-                
-                // Reset form
-                const movieForm = document.getElementById('movieForm');
-                if (movieForm) {
-                    movieForm.reset();
-                }
-                this.newMovieToggleActive = false;
-                const toggle = document.getElementById('newMovieToggle');
-                if (toggle) {
-                    toggle.classList.remove('active');
-                }
-                const submitBtn = document.querySelector('#movieForm button[type="submit"]');
-                if (submitBtn) {
-                    submitBtn.innerHTML = '<i class="fas fa-plus me-2"></i>Add Movie';
-                }
-            }
-
-            loadAdminMovieList() {
-                const listContainer = document.getElementById('adminMovieList');
-                if (!listContainer) return;
-
-                listContainer.innerHTML = '';
-
-                this.movies.forEach(movie => {
-                    const movieItem = document.createElement('div');
-                    movieItem.className = 'admin-movie-item mb-3 p-3';
-                    movieItem.style.cssText = `
-                        background: var(--netflix-gray);
-                        border-radius: 8px;
-                        border-left: 4px solid var(--netflix-red);
-                    `;
-                    
-                    movieItem.innerHTML = `
-                        <div class="d-flex align-items-center">
-                            <img src="${movie.poster}" alt="${movie.title}" 
-                                 style="width: 50px; height: 75px; object-fit: cover; border-radius: 4px;">
-                            <div class="ms-3 flex-grow-1">
-                                <h6 class="mb-1 text-light">${movie.title} ${movie.isNew ? '<span class="badge bg-success">NEW</span>' : ''}</h6>
-                                <small class="text-muted">${movie.type} • ${movie.year}</small>
-                            </div>
-                            <div class="btn-group">
-                                <button class="btn btn-sm btn-outline-light" onclick="app.editMovie(${movie.id})">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-danger" onclick="app.deleteMovie(${movie.id})">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                    
-                    listContainer.appendChild(movieItem);
-                });
-            }
-
-            editMovie(id) {
-                const movie = this.movies.find(m => m.id === id);
-                if (movie) {
-                    document.getElementById('movieTitle').value = movie.title;
-                    document.getElementById('movieYear').value = movie.year;
-                    document.getElementById('movieType').value = movie.type;
-                    document.getElementById('movieDescription').value = movie.description;
-                    document.getElementById('moviePoster').value = movie.poster;
-                    document.getElementById('movieLink').value = movie.link;
-                    
-                    this.newMovieToggleActive = movie.isNew;
-                    const toggle = document.getElementById('newMovieToggle');
-                    if (toggle) {
-                        if (movie.isNew) {
-                            toggle.classList.add('active');
-                        } else {
-                            toggle.classList.remove('active');
-                        }
-                    }
-                    
-                    this.editingMovieId = id;
-                    const submitBtn = document.querySelector('#movieForm button[type="submit"]');
-                    if (submitBtn) {
-                        submitBtn.innerHTML = '<i class="fas fa-save me-2"></i>Update Movie';
-                    }
-                    
-                    // Scroll to form
-                    const movieForm = document.getElementById('movieForm');
-                    if (movieForm) {
-                        movieForm.scrollIntoView({ behavior: 'smooth' });
-                    }
-                }
-            }
-
-            deleteMovie(id) {
-                if (confirm('Are you sure you want to delete this movie?')) {
-                    this.movies = this.movies.filter(m => m.id !== id);
-                    this.saveMovies();
-                    if (this.currentView === 'movies') {
-                        this.displayMovies();
-                    }
-                    if (this.currentView === 'home') {
-                        this.displayNewMovies();
-                    }
-                    this.loadAdminMovieList();
-                    this.showToast('Movie deleted successfully!', 'success');
-                }
-            }
-
-            showToast(message, type = 'info') {
-                const toastContainer = document.querySelector('.toast-container');
-                if (!toastContainer) return;
-                
-                const toast = document.createElement('div');
-                toast.className = `toast toast-${type} show`;
-                toast.setAttribute('role', 'alert');
-                toast.innerHTML = `
-                    <div class="toast-header">
-                        <i class="fas fa-${type === 'success' ? 'check-circle text-success' : type === 'error' ? 'exclamation-circle text-danger' : 'info-circle text-info'} me-2"></i>
-                        <strong class="me-auto">OussaStream</strong>
-                        <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
-                    </div>
-                    <div class="toast-body">${message}</div>
-                `;
-                
-                toastContainer.appendChild(toast);
-                
-                // Auto remove after 3 seconds
-                setTimeout(() => {
-                    const bsToast = new bootstrap.Toast(toast);
-                    bsToast.hide();
-                    setTimeout(() => toast.remove(), 500);
-                }, 3000);
-            }
-        }
-
-        // Global functions
-        function showHome() {
-            if (window.app) {
-                app.showHome();
-            }
-        }
-
-        function showMovies() {
-            if (window.app) {
-                app.showMovies();
-            }
-        }
-
-        function showAdminLogin() {
-            if (window.app) {
-                app.showAdminLogin();
-            }
-        }
-
-        // Initialize app when DOM is loaded
-        document.addEventListener('DOMContentLoaded', () => {
-            window.app = new OussaStreamApp();
-        });
-    </script>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
+    
+    <script src="script.js"></script>
 </body>
 </html>
