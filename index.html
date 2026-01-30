@@ -1,453 +1,417 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OussaStream</title>
     <link rel="icon" type="image/png" href="https://i.ibb.co/MD3HFP46/Untitled-Design-1-Edited-Edited.png">
+
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@700;900&display=swap"
+        rel="stylesheet">
+    <!-- Plyr CSS -->
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-spinner"></div>
-        <div class="loading-text">Loading OussaStream...</div>
-    </div>
-    
-    <div class="connection-status connecting" id="connectionStatus">
-        <i class="fas fa-wifi"></i> Connecting to Firebase...
+        <div class="loading-text">OussaStream</div>
     </div>
 
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg netflix-navbar fixed-top" id="mainNavbar">
         <div class="container">
             <a class="navbar-brand" href="#" onclick="app.showHome()">
                 <img src="https://i.ibb.co/MD3HFP46/Untitled-Design-1-Edited-Edited.png" alt="OussaStream">
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+
+            <!-- Auth Section (Right Side) -->
+            <div class="d-flex align-items-center order-lg-3 ms-auto gap-3">
+                <div id="authSection">
+                    <button class="btn btn-danger btn-sm fw-bold px-3" onclick="app.openAuthModal()">Sign In</button>
+                </div>
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
+
+            <!-- Menu Links (Center) -->
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="app.showHome()">
-                            <i class="fas fa-home"></i> Home
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="app.showMovies()">
-                            <i class="fas fa-film"></i> Movies
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="app.showSeries()">
-                            <i class="fas fa-tv"></i> Series
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="app.showCollections()">
-                            <i class="fas fa-layer-group"></i> Collections
-                        </a>
-                    </li>
-                </ul>
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="app.toggleAdmin()">
-                            <i class="fas fa-cog"></i> Admin
-                        </a>
-                    </li>
+                <ul class="navbar-nav mx-auto">
+                    <li class="nav-item"><a class="nav-link" onclick="app.showHome()"><i class="fas fa-home"></i>
+                            Home</a></li>
+                    <li class="nav-item"><a class="nav-link" onclick="app.showMovies()"><i class="fas fa-film"></i>
+                            Movies</a></li>
+                    <li class="nav-item"><a class="nav-link" onclick="app.showSeries()"><i class="fas fa-tv"></i>
+                            Series</a></li>
+                    <li class="nav-item"><a class="nav-link" onclick="app.showMyList()"><i class="fas fa-heart"></i> My
+                            List</a></li>
                 </ul>
             </div>
         </div>
     </nav>
 
-    <div id="mainContent">
-        <section class="hero-section" id="heroSection">
-            <div class="container">
-                <div class="row justify-content-center text-center">
-                    <div class="col-lg-8 hero-content">
-                        <h1 class="hero-title">OussaStream</h1>
-                        <p class="hero-subtitle">Discover and stream the greatest movies and series of all time with our premium collection. Experience cinema like never before.</p>
-                        <button class="cta-button" onclick="app.showMovies()">
-                            <i class="fas fa-play"></i> Start Watching
-                        </button>
+    <!-- Main Content -->
+    <main id="mainContent">
+
+        <!-- NEW HERO CAROUSEL -->
+        <div id="heroCarousel" class="carousel slide carousel-fade hero-carousel" data-bs-ride="carousel"
+            data-bs-pause="hover">
+            <div class="carousel-indicators" id="heroIndicators">
+                <!-- Indicators injected by JS -->
+            </div>
+            <div class="carousel-inner" id="heroSlides">
+                <!-- Slides injected by JS -->
+                <div class="carousel-item active">
+                    <div class="hero-fallback-bg"></div>
+                    <div class="hero-overlay"></div>
+                    <div class="container hero-content-wrapper">
+                        <h1 class="hero-title">Welcome to OussaStream</h1>
+                        <p class="hero-desc">Loading latest content...</p>
                     </div>
                 </div>
             </div>
+            <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Previous</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Next</span>
+            </button>
+        </div>
+
+        <section class="section hidden" id="continueWatchingSection">
+            <div class="container">
+                <h2 class="section-title">Continue Watching</h2>
+                <div class="content-grid" id="continueGrid"></div>
+            </div>
         </section>
 
-        <section class="section" id="newContentSection">
+        <section class="section">
             <div class="container">
-                <h2 class="section-title">New Releases</h2>
-                <p class="text-center" style="color: var(--netflix-gray); margin-bottom: 3rem;">Recently added to our collection</p>
-                <div class="content-grid" id="newContentGrid">
-                    </div>
-                <div class="text-center">
-                    <button class="cta-button" onclick="app.showMovies()" style="margin-right: 1rem;">View All Movies</button>
-                    <button class="cta-button" onclick="app.showSeries()">View All Series</button>
-                </div>
+                <h2 class="section-title">Latest Updates</h2>
+                <div class="content-grid" id="newContentGrid"></div>
             </div>
         </section>
 
         <section class="section" id="collectionsSection">
             <div class="container">
-                <h2 class="section-title">Browse Collections</h2>
-                <div class="collections-grid" id="collectionsGrid">
-                    <div class="collection-card" onclick="app.filterContent('Drama', 'movies')">
-                        <div class="collection-icon">
-                            <i class="fas fa-heart"></i>
-                        </div>
-                        <div class="collection-title">Drama</div>
-                        <div class="collection-count" id="dramaCount">0 movies & series</div>
+                <h2 class="section-title">Popular Genres</h2>
+                <div class="collections-grid">
+                    <div class="collection-card" onclick="app.filterByGenre('Action')">
+                        <i class="fas fa-bolt collection-icon"></i>
+                        <h3 class="collection-title">Action</h3>
                     </div>
-                    <div class="collection-card" onclick="app.filterContent('Action', 'movies')">
-                        <div class="collection-icon">
-                            <i class="fas fa-bolt"></i>
-                        </div>
-                        <div class="collection-title">Action</div>
-                        <div class="collection-count" id="actionCount">0 movies & series</div>
+                    <div class="collection-card" onclick="app.filterByGenre('Drama')">
+                        <i class="fas fa-masks-theater collection-icon"></i>
+                        <h3 class="collection-title">Drama</h3>
                     </div>
-                    <div class="collection-card" onclick="app.filterContent('Comedy', 'movies')">
-                        <div class="collection-icon">
-                            <i class="fas fa-laugh"></i>
-                        </div>
-                        <div class="collection-title">Comedy</div>
-                        <div class="collection-count" id="comedyCount">0 movies & series</div>
-                    </div>
-                    <div class="collection-card" onclick="app.filterContent('Thriller', 'movies')">
-                        <div class="collection-icon">
-                            <i class="fas fa-mask"></i>
-                        </div>
-                        <div class="collection-title">Thriller</div>
-                        <div class="collection-count" id="thrillerCount">0 movies & series</div>
+                    <div class="collection-card" onclick="app.filterByGenre('Comedy')">
+                        <i class="fas fa-laugh-squint collection-icon"></i>
+                        <h3 class="collection-title">Comedy</h3>
                     </div>
                 </div>
             </div>
         </section>
-    </div>
+    </main>
 
-    <div id="moviesPage" class="hidden">
-        <div style="height: 100px;"></div>
-        <div class="container">
-            <div class="section">
-                <h2 class="section-title">All Movies</h2>
-                
-                <div class="controls-container">
-                    <div class="search-container">
-                        <i class="fas fa-search search-icon"></i>
-                        <input type="text" class="search-input" id="movieSearchInput" placeholder="Search movies by title...">
+    <!-- Catalog Page -->
+    <div id="catalogPage" class="hidden">
+        <div class="container page-padding">
+
+            <!-- Header & Search Row -->
+            <div
+                class="catalog-header d-flex flex-column flex-md-row justify-content-between align-items-center mb-5 gap-3">
+                <h2 class="section-title mb-0" id="pageTitle"
+                    style="border-left: none; padding-left: 0; font-size: 2.5rem;">Browse</h2>
+
+                <div class="search-container">
+                    <i class="fas fa-search search-icon-inside"></i>
+                    <input type="text" id="searchInput" class="modern-search-input"
+                        placeholder="Search titles, genres...">
+                </div>
+            </div>
+
+            <!-- Filters Bar -->
+            <div class="filters-bar mb-5">
+                <div class="row g-3">
+                    <div class="col-6 col-md-3">
+                        <div class="filter-wrapper">
+                            <label class="filter-mini-label">Genre</label>
+                            <select id="genreSelect" class="modern-select">
+                                <option value="all">All Genres</option>
+                                <option value="Action">Action</option>
+                                <option value="Adventure">Adventure</option>
+                                <option value="Comedy">Comedy</option>
+                                <option value="Crime">Crime</option>
+                                <option value="Drama">Drama</option>
+                                <option value="Fantasy">Fantasy</option>
+                                <option value="Horror">Horror</option>
+                                <option value="Sci-Fi">Sci-Fi</option>
+                                <option value="Thriller">Thriller</option>
+                                <option value="Romance">Romance</option>
+                                <option value="Anime">Anime</option>
+                            </select>
+                            <i class="fas fa-chevron-down select-arrow"></i>
+                        </div>
                     </div>
-                    <div class="filter-buttons" id="movieFilters">
-                        <button class="filter-btn active" onclick="app.filterMovies('all')">All</button>
-                        <button class="filter-btn" onclick="app.filterMovies('Drama')">Drama</button>
-                        <button class="filter-btn" onclick="app.filterMovies('Action')">Action</button>
-                        <button class="filter-btn" onclick="app.filterMovies('Comedy')">Comedy</button>
-                        <button class="filter-btn" onclick="app.filterMovies('Thriller')">Thriller</button>
-                        <button class="filter-btn" onclick="app.filterMovies('Horror')">Horror</button>
-                        <button class="filter-btn" onclick="app.filterMovies('Sci-Fi')">Sci-Fi</button>
-                        <button class="filter-btn" onclick="app.filterMovies('Romance')">Romance</button>
+                    <div class="col-6 col-md-3">
+                        <div class="filter-wrapper">
+                            <label class="filter-mini-label">Year</label>
+                            <select id="yearSelect" class="modern-select">
+                                <option value="all">All Years</option>
+                            </select>
+                            <i class="fas fa-chevron-down select-arrow"></i>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-3 ms-auto">
+                        <div class="filter-wrapper">
+                            <label class="filter-mini-label">Sort By</label>
+                            <select id="sortSelect" class="modern-select">
+                                <option value="newest">Newest First</option>
+                                <option value="oldest">Oldest First</option>
+                                <option value="rating">Top Rated</option>
+                            </select>
+                            <i class="fas fa-chevron-down select-arrow"></i>
+                        </div>
                     </div>
                 </div>
-
-                <div class="content-grid" id="moviesGrid">
-                    </div>
-
-                <div class="pagination-container" id="moviePaginationContainer">
-                    </div>
             </div>
+
+            <div class="content-grid" id="catalogGrid"></div>
+            <div class="pagination-container mt-5" id="paginationControls"></div>
         </div>
     </div>
 
-    <div id="seriesPage" class="hidden">
-        <div style="height: 100px;"></div>
-        <div class="container">
-            <div class="section">
-                <h2 class="section-title">All Series</h2>
-                
-                <div class="controls-container">
-                    <div class="search-container">
-                        <i class="fas fa-search search-icon"></i>
-                        <input type="text" class="search-input" id="seriesSearchInput" placeholder="Search series by title...">
-                    </div>
-                    <div class="filter-buttons" id="seriesFilters">
-                        <button class="filter-btn active" onclick="app.filterSeries('all')">All</button>
-                        <button class="filter-btn" onclick="app.filterSeries('Drama')">Drama</button>
-                        <button class="filter-btn" onclick="app.filterSeries('Action')">Action</button>
-                        <button class="filter-btn" onclick="app.filterSeries('Comedy')">Comedy</button>
-                        <button class="filter-btn" onclick="app.filterSeries('Thriller')">Thriller</button>
-                        <button class="filter-btn" onclick="app.filterSeries('Horror')">Horror</button>
-                        <button class="filter-btn" onclick="app.filterSeries('Sci-Fi')">Sci-Fi</button>
-                        <button class="filter-btn" onclick="app.filterSeries('Romance')">Romance</button>
-                    </div>
-                </div>
-
-                <div class="content-grid" id="seriesGrid">
-                    </div>
-
-                <div class="pagination-container" id="seriesPaginationContainer">
-                    </div>
-            </div>
+    <!-- My List Page -->
+    <div id="myListPage" class="hidden">
+        <div class="container page-padding">
+            <h2 class="section-title">My Favorites</h2>
+            <div class="content-grid" id="myListGrid"></div>
         </div>
     </div>
 
-    <div id="adminSection" class="hidden">
-        <div style="height: 100px;"></div>
-        <div class="container">
-            <div class="admin-section">
-                <div id="adminLogin">
-                    <h3 class="section-title">Admin Login</h3>
-                    <div class="login-form">
-                        <div class="form-group">
-                            <label class="form-label">Email</label>
-                            <input type="email" class="form-input" id="adminUsername" placeholder="Enter email">
+    <!-- Details Page -->
+    <div id="detailsPage" class="hidden">
+        <div class="details-hero" id="detailHero">
+            <div class="details-overlay"></div>
+            <div class="container relative-content">
+                <button class="back-btn mb-4" onclick="app.goBack()">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <div class="row align-items-end">
+                    <div class="col-md-3 d-none d-md-block">
+                        <img id="detailPoster" src="" alt="Poster" class="img-fluid rounded shadow-lg">
+                    </div>
+                    <div class="col-md-9">
+                        <h1 id="detailTitle" class="display-4 fw-bold mb-2">Title</h1>
+                        <div class="meta-data mb-3">
+                            <span id="detailYear" class="badge bg-secondary me-2"></span>
+                            <span id="detailRating" class="badge bg-warning text-dark me-2"></span>
+                            <span id="detailGenre" class="text-gray-small"></span>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Password</label>
-                            <input type="password" class="form-input" id="adminPassword" placeholder="Enter password">
+                        <p id="detailDesc" class="lead mb-4" style="max-width: 800px; color: #ddd;"></p>
+                        <div class="action-buttons mb-5">
+                            <button id="detailPlayBtn" class="cta-button me-3">
+                                <i class="fas fa-play"></i> Watch Now
+                            </button>
+                            <button id="detailListBtn" class="btn btn-outline-light px-4 py-3 rounded">
+                                <i class="far fa-heart"></i> Add to List
+                            </button>
                         </div>
-                        <button class="btn-primary" onclick="app.adminLogin()">Login</button>
+                        <div class="cast-section mb-4">
+                            <h5 class="text-gray-small mb-3 text-uppercase">Top Cast</h5>
+                            <div id="detailCast" class="d-flex gap-4 overflow-auto pb-2 cast-scroll"></div>
+                        </div>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <div id="adminPanel" class="hidden">
-                    <div class="admin-header">
-                        <div class="admin-title">
-                            <i class="fas fa-crown"></i>
-                            Admin Dashboard
-                        </div>
-                        <div class="admin-toggles">
-                            <button class="toggle-button" id="newMovieToggle" onclick="app.toggleNewMovieForm()">
-                                <i class="fas fa-plus"></i> Add New Movie
-                            </button>
-                            <button class="toggle-button series" id="newSeriesToggle" onclick="app.toggleNewSeriesForm()">
-                                <i class="fas fa-plus"></i> Add New Series
-                            </button>
-                            <button class="btn-secondary" onclick="app.adminLogout()">Logout</button>
-                        </div>
-                    </div>
+        <!-- REVIEWS SECTION -->
+        <div class="container section pt-0">
+            <div class="row">
+                <div class="col-md-8">
+                    <h3 class="section-title">Reviews & Ratings</h3>
 
-                    <div class="admin-stats">
-                        <div class="stat-card">
-                            <div class="stat-value" id="totalMovies">0</div>
-                            <div class="stat-label">Total Movies</div>
+                    <!-- Write Review Box -->
+                    <div id="reviewInputContainer" class="review-box mb-4">
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <div class="review-avatar-small" id="userReviewAvatar">U</div>
+                            <span class="text-white fw-bold" id="userReviewName">User</span>
                         </div>
-                        <div class="stat-card">
-                            <div class="stat-value" id="totalSeries">0</div>
-                            <div class="stat-label">Total Series</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value" id="totalSeasons">0</div>
-                            <div class="stat-label">Total Seasons</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value" id="totalGenres">0</div>
-                            <div class="stat-label">Genres</div>
-                        </div>
-                    </div>
-
-                    <div class="content-form hidden" id="movieForm">
-                        <h4 id="movieFormTitle">Add New Movie</h4>
-                        <form onsubmit="app.saveMovie(event)">
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label class="form-label">Movie Title *</label>
-                                    <input type="text" class="form-input" id="movieTitle" required>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Year *</label>
-                                    <input type="number" class="form-input" id="movieYear" min="1900" max="2030" required>
-                                </div>
+                        <form onsubmit="app.submitReview(event)">
+                            <div class="star-rating-input mb-3">
+                                <i class="far fa-star star-input" data-value="1" onclick="app.setRating(1)"></i>
+                                <i class="far fa-star star-input" data-value="2" onclick="app.setRating(2)"></i>
+                                <i class="far fa-star star-input" data-value="3" onclick="app.setRating(3)"></i>
+                                <i class="far fa-star star-input" data-value="4" onclick="app.setRating(4)"></i>
+                                <i class="far fa-star star-input" data-value="5" onclick="app.setRating(5)"></i>
+                                <input type="hidden" id="ratingValue" required>
+                                <span class="ms-2 text-gray-small" id="ratingText">Select rating</span>
                             </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label class="form-label">Genre *</label>
-                                    <select class="form-select" id="movieType" required>
-                                        <option value="">Select Genre</option>
-                                        <option value="Action">Action</option>
-                                        <option value="Comedy">Comedy</option>
-                                        <option value="Drama">Drama</option>
-                                        <option value="Horror">Horror</option>
-                                        <option value="Romance">Romance</option>
-                                        <option value="Sci-Fi">Sci-Fi</option>
-                                        <option value="Thriller">Thriller</option>
-                                        <option value="Documentary">Documentary</option>
-                                        <option value="Animation">Animation</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Poster URL *</label>
-                                    <input type="url" class="form-input" id="moviePoster" required placeholder="https://...">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Movie Link (Direct Link) *</label>
-                                <input type="url" class="form-input" id="movieLink" required placeholder="https://...">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Description *</label>
-                                <textarea class="form-textarea" id="movieDescription" required placeholder="Enter movie description..."></textarea>
-                            </div>
-                            <div style="display: flex; gap: 1rem;">
-                                <button type="submit" class="btn-primary">
-                                    <i class="fas fa-save"></i> Save Movie
-                                </button>
-                                <button type="button" class="btn-secondary" onclick="app.cancelMovieEdit()">
-                                    <i class="fas fa-times"></i> Cancel
-                                </button>
-                            </div>
+                            <textarea id="reviewText" class="form-control dark-input mb-3" rows="3"
+                                placeholder="Write your review here..." required></textarea>
+                            <button type="submit" class="btn btn-danger btn-sm px-4">Post Review</button>
                         </form>
                     </div>
-
-                    <div class="content-form hidden" id="seriesForm">
-                        <h4 id="seriesFormTitle">Add New Series</h4>
-                        <form onsubmit="app.saveSeries(event)">
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label class="form-label">Series Title *</label>
-                                    <input type="text" class="form-input" id="seriesTitle" required>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Year *</label>
-                                    <input type="number" class="form-input" id="seriesYear" min="1900" max="2030" required>
-                                </div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label class="form-label">Genre *</label>
-                                    <select class="form-select" id="seriesType" required>
-                                        <option value="">Select Genre</option>
-                                        <option value="Action">Action</option>
-                                        <option value="Comedy">Comedy</option>
-                                        <option value="Drama">Drama</option>
-                                        <option value="Horror">Horror</option>
-                                        <option value="Romance">Romance</option>
-                                        <option value="Sci-Fi">Sci-Fi</option>
-                                        <option value="Thriller">Thriller</option>
-                                        <option value="Documentary">Documentary</option>
-                                        <option value="Animation">Animation</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Poster URL *</label>
-                                    <input type="url" class="form-input" id="seriesPoster" required placeholder="https://...">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Description *</label>
-                                <textarea class="form-textarea" id="seriesDescription" required placeholder="Enter series description..."></textarea>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">Seasons & Episodes</label>
-                                <div id="seasonsContainer">
-                                    </div>
-                                <button type="button" class="btn-add" onclick="app.addSeason()">
-                                    <i class="fas fa-plus"></i> Add Season
-                                </button>
-                            </div>
-
-                            <div style="display: flex; gap: 1rem;">
-                                <button type="submit" class="btn-primary">
-                                    <i class="fas fa-save"></i> Save Series
-                                </button>
-                                <button type="button" class="btn-secondary" onclick="app.cancelSeriesEdit()">
-                                    <i class="fas fa-times"></i> Cancel
-                                </button>
-                            </div>
-                        </form>
+                    <div id="loginToReview" class="review-box mb-4 text-center py-4 hidden">
+                        <p class="text-gray-small mb-3">Please sign in to rate and review.</p>
+                        <button class="btn btn-outline-light btn-sm" onclick="app.openAuthModal()">Sign In</button>
                     </div>
 
-                    <div class="content-grid" id="adminContentGrid">
-                        </div>
+                    <!-- Reviews List -->
+                    <div id="reviewsList" class="reviews-list">
+                        <!-- Reviews will be injected here -->
+                    </div>
+                </div>
+
+                <div class="col-md-4 mt-5 mt-md-0">
+                    <h3 class="section-title">More Like This</h3>
+                    <div class="content-grid-small" id="detailRelatedGrid"></div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Auth Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content auth-modal-content">
+            <button class="close-modal" onclick="app.closeAuthModal()"><i class="fas fa-times"></i></button>
+            <div class="auth-box">
+                <h2 class="mb-4 fw-bold" id="authTitle">Sign In</h2>
+                <form id="authForm" onsubmit="app.handleAuth(event)">
+                    <div class="mb-3">
+                        <input type="email" id="authEmail" class="form-control dark-input"
+                            placeholder="Email or phone number" required>
+                    </div>
+                    <div class="mb-3" id="passwordGroup">
+                        <input type="password" id="authPassword" class="form-control dark-input" placeholder="Password">
+                        <div class="text-end mt-2">
+                            <a href="#" class="text-gray-small text-decoration-none" style="font-size: 0.85rem;"
+                                id="forgotPasswordLink" onclick="app.toggleResetMode()">Forgot Password?</a>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-danger w-100 py-2 fw-bold mt-2" id="authSubmitBtn">Sign
+                        In</button>
+                    <div class="mt-4 text-gray-small" id="authSwitchContainer">
+                        <span id="authSwitchText">New to OussaStream? </span>
+                        <a href="#" class="text-white text-decoration-none fw-bold" onclick="app.toggleAuthMode()">Sign
+                            up now.</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content auth-modal-content">
+            <button class="close-modal" onclick="app.closeProfileModal()"><i class="fas fa-times"></i></button>
+            <div class="auth-box">
+                <h2 class="mb-4 fw-bold">My Profile</h2>
+                <div class="text-center mb-4">
+                    <div class="position-relative d-inline-block">
+                        <div class="auth-avatar mx-auto"
+                            style="width: 80px; height: 80px; font-size: 2.5rem; overflow: hidden; margin-bottom: 0;"
+                            id="profileAvatarBig">
+                            <span id="profileAvatarLetter">U</span>
+                            <img id="profileAvatarImg" src="" class="w-100 h-100 object-fit-cover"
+                                style="display: none;">
+                        </div>
+                        <label for="avatarInput" class="avatar-upload-btn" title="Change Avatar">
+                            <i class="fas fa-camera"></i>
+                        </label>
+                        <input type="file" id="avatarInput" accept="image/*" hidden
+                            onchange="app.handleAvatarSelect(event)">
+                    </div>
+                    <p class="text-gray-small mt-3" id="profileEmailDisplay">user@email.com</p>
+                </div>
+                <form id="profileForm" onsubmit="app.handleProfileUpdate(event)">
+                    <div class="mb-3">
+                        <label class="form-label text-gray-small">Display Name</label>
+                        <input type="text" id="profileName" class="form-control dark-input" placeholder="Your Name">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-gray-small">New Password (leave blank to keep)</label>
+                        <input type="password" id="profilePassword" class="form-control dark-input"
+                            placeholder="New Password">
+                    </div>
+                    <button type="submit" class="btn btn-danger w-100 py-2 fw-bold mt-2">Update Profile</button>
+                </form>
+                <hr class="dropdown-divider my-4" style="border-color: rgba(255,255,255,0.1);">
+                <button class="btn btn-outline-light w-100 py-2" onclick="app.logout()">Sign Out</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Video Modal -->
     <div id="videoModal" class="modal">
-        <div class="modal-content">
-            <button class="close-modal" onclick="app.closeVideoModal()">
-                <i class="fas fa-times"></i>
-            </button>
-            <div class="video-container">
-                <iframe id="contentPlayer" allowfullscreen></iframe>
+        <div class="modal-content video-only-content">
+            <button class="close-modal" onclick="app.closeVideoModal()"><i class="fas fa-times"></i></button>
+            <div class="video-container" id="playerContainer">
+                <video id="player" playsinline controls></video>
             </div>
-            <div class="modal-info">
-                <div class="modal-title" id="modalTitle"></div>
-                <div class="modal-meta">
-                    <span id="modalYear"></span>
-                    <span id="modalType"></span>
-                </div>
-                <div class="modal-description" id="modalDescription"></div>
-            </div>
-            <div class="episode-selector hidden" id="episodeSelector">
-                <div class="selector-row">
-                    <div>
-                        <div class="selector-label">Season</div>
-                        <select class="form-select" id="seasonSelect" onchange="app.updateEpisodeOptions()">
-                            <option value="">Select Season</option>
-                        </select>
-                    </div>
-                    <div>
-                        <div class="selector-label">Episode</div>
-                        <select class="form-select" id="episodeSelect">
-                            <option value="">Select Episode</option>
-                        </select>
-                    </div>
-                    <div>
-                        <button class="btn-play-episode" onclick="app.playSelectedEpisode()">
-                            <i class="fas fa-play"></i> Play
-                        </button>
+            <div id="seriesControls" class="episode-selector hidden p-3 bg-dark">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="text-white small">Season</label>
+                            <select id="seasonSelect" class="custom-select w-100"
+                                onchange="app.onSeasonChange()"></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-white small">Episode</label>
+                            <select id="episodeSelect" class="custom-select w-100"
+                                onchange="app.playEpisode()"></select>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Footer -->
     <footer class="footer">
         <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h4>About OussaStream</h4>
-                    <p>Your destination for the greatest movies and series of all time. We curate the finest collection of entertainment from around the world.</p>
+            <div class="row align-items-center">
+                <div class="col-md-6 text-center text-md-start">
+                    <img src="https://i.ibb.co/MD3HFP46/Untitled-Design-1-Edited-Edited.png" alt="OussaStream"
+                        class="footer-logo" onclick="app.showHome()">
                 </div>
-                <div class="footer-section">
-                    <h4>Quick Links</h4>
-                    <p><a href="#" onclick="app.showHome()">Home</a></p>
-                    <p><a href="#" onclick="app.showMovies()">Movies</a></p>
-                    <p><a href="#" onclick="app.showSeries()">Series</a></p>
-                    <p><a href="#" onclick="app.showCollections()">Collections</a></p>
+                <div class="col-md-6 text-center text-md-end">
+                    <p class="mb-0 text-gray-small">&copy; 2025 OussaStream. Created by Oussama ait salem.</p>
                 </div>
-                <div class="footer-section">
-                    <h4>Support</h4>
-                    <p><a href="#">Help Center</a></p>
-                    <p><a href="https://www.instagram.com/aits.oussa/">Contact Us</a></p>
-                    <p><a href="#">Terms of Service</a></p>
-                </div>
-                <div class="footer-section">
-                    <h4>Connect</h4>
-                    <p>Follow us on social media for the latest updates</p>
-                    <div class="social-links">
-                        <a href="https://www.instagram.com/aits.oussa/" class="social-link"><i class="fab fa-instagram"></i></a>
-                    </div>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 OussaStream. All rights reserved. Made with <span style="color: var(--netflix-red);">❤</span> by Oussama ait salem.</p>
             </div>
         </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
-    
+    <!-- Bootstrap JS (REQUIRED FOR CAROUSEL) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Plyr JS -->
+    <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
+
+    <!-- Main Script -->
     <script src="script.js"></script>
 </body>
+
 </html>
