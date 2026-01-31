@@ -320,14 +320,22 @@ class OussaStreamApp {
                 this.showToast("Profile Updated!");
             }
 
+            // 3. Update Avatar (Database) & SYNC REVIEWS
             if (this.tempAvatarData) {
                 try {
                     await this.db.ref('users/' + this.user.uid + '/avatar').set(this.tempAvatarData);
                     this.showToast("Avatar Updated!");
+
+                    // UPDATE REVIEWS WITH NEW AVATAR & NAME
+                    this.updateUserReviews(this.user.uid, name || this.user.displayName, this.tempAvatarData);
+
                 } catch (dbError) {
                     console.error("Avatar upload failed:", dbError);
                     this.showToast("Profile updated, but Avatar failed (Check DB Rules)");
                 }
+            } else if (name && name !== this.user.displayName) {
+                // If only name changed, still update reviews
+                this.updateUserReviews(this.user.uid, name, this.avatar);
             }
 
             this.closeProfileModal();
@@ -341,6 +349,37 @@ class OussaStreamApp {
                 this.showToast(error.message);
             }
         }
+    }
+
+    // --- NEW HELPER: UPDATE ALL USER REVIEWS ---
+    updateUserReviews(userId, newName, newAvatar) {
+        // This is a heavy operation if there are many movies, but okay for this scale
+        // We need to find reviews by this user across ALL movies
+
+        this.db.ref('reviews').once('value', (snapshot) => {
+            const allReviews = snapshot.val();
+            if (!allReviews) return;
+
+            const updates = {};
+
+            Object.keys(allReviews).forEach(movieId => {
+                const movieReviews = allReviews[movieId];
+                Object.keys(movieReviews).forEach(reviewId => {
+                    const review = movieReviews[reviewId];
+                    if (review.userId === userId) {
+                        // Found a review by this user, add to updates
+                        if (newName) updates[`reviews/${movieId}/${reviewId}/userName`] = newName;
+                        if (newAvatar) updates[`reviews/${movieId}/${reviewId}/userAvatar`] = newAvatar;
+                    }
+                });
+            });
+
+            if (Object.keys(updates).length > 0) {
+                this.db.ref().update(updates)
+                    .then(() => console.log("User reviews updated successfully"))
+                    .catch(err => console.error("Failed to sync reviews", err));
+            }
+        });
     }
 
     logout() {
@@ -429,19 +468,23 @@ class OussaStreamApp {
         });
     }
 
-    timeAgo(date) {
-        const seconds = Math.floor((new Date() - date) / 1000);
-        let interval = seconds / 31536000;
-        if (interval > 1) return Math.floor(interval) + " years ago";
-        interval = seconds / 2592000;
-        if (interval > 1) return Math.floor(interval) + " months ago";
-        interval = seconds / 86400;
-        if (interval > 1) return Math.floor(interval) + " days ago";
-        interval = seconds / 3600;
-        if (interval > 1) return Math.floor(interval) + " hours ago";
-        interval = seconds / 60;
-        if (interval > 1) return Math.floor(interval) + " minutes ago";
-        return Math.floor(seconds) + " seconds ago";
+    // Helper: Format Date with AM/PM
+    formatDate(timestamp) {
+        const date = new Date(timestamp);
+        let hours = date.getHours();
+        const minutes = date.getMinutes();
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // the hour '0' should be '12'
+        const strMin = minutes < 10 ? '0' + minutes : minutes;
+
+        // Format example: Feb 1, 2026 at 12:39 PM
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const month = months[date.getMonth()];
+        const day = date.getDate();
+        const year = date.getFullYear();
+
+        return `${month} ${day}, ${year} • ${hours}:${strMin} ${ampm}`;
     }
 
     fetchReviews(contentId) {
@@ -500,7 +543,7 @@ class OussaStreamApp {
                         </div>
                     </div>
                     <p class="review-text mb-1">${r.text}</p>
-                    <small class="review-date">${this.timeAgo(r.timestamp)}</small>
+                    <small class="review-date">${this.formatDate(r.timestamp)}</small>
                     ${actionsHtml}
                 </div>
             `}).join('');
