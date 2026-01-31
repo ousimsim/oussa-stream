@@ -204,10 +204,16 @@ class OussaStreamApp {
         }
     }
 
+    // UPDATED: Handle Auth with Loading State
     async handleAuth(e) {
         e.preventDefault();
         const email = document.getElementById('authEmail').value;
         const pass = document.getElementById('authPassword').value;
+        const btn = document.getElementById('authSubmitBtn');
+
+        // Set Loading State
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Loading...';
 
         try {
             if (this.isResetMode) {
@@ -225,6 +231,10 @@ class OussaStreamApp {
             this.closeAuthModal();
         } catch (error) {
             this.showToast(error.message);
+        } finally {
+            // Restore Button State
+            btn.disabled = false;
+            this.updateAuthModalUI(); // This resets the text to "Sign In" or "Sign Up" correctly
         }
     }
 
@@ -1077,13 +1087,7 @@ class OussaStreamApp {
 
     updateURL(view, id = null) { let url = `?view=${view}`; if (id) url += `&id=${id}`; const state = { view, id }; history.pushState(state, '', url); }
 
-    goBack() {
-        if (this.currentView === 'player') {
-            this.closePlayer();
-        } else {
-            history.back();
-        }
-    }
+    goBack() { history.back(); }
 
     showToast(msg) { const container = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = 'custom-toast'; toast.textContent = msg; container.appendChild(toast); setTimeout(() => toast.remove(), 3500); }
 
