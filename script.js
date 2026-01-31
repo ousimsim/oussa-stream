@@ -635,12 +635,17 @@ class OussaStreamApp {
     }
 
     switchView(id) {
-        document.getElementById('videoModal').classList.remove('show');
+        // Reset scrolling for normal pages
         document.body.style.overflow = 'auto';
-        ['mainContent', 'catalogPage', 'myListPage', 'detailsPage'].forEach(p => {
+
+        ['mainContent', 'catalogPage', 'myListPage', 'detailsPage', 'playerPage'].forEach(p => {
             const el = document.getElementById(p);
             if (el) el.classList.toggle('hidden', p !== id);
         });
+
+        // If switching to Player, hide navbar/footer (optional, but requested layout implies full screen)
+        // Kept simple for now as per instructions "don't remove unless told", but playerPage CSS covers everything.
+
         window.scrollTo(0, 0);
     }
 
@@ -754,22 +759,34 @@ class OussaStreamApp {
         if (!this.activeContent) return;
         const item = this.activeContent;
         const controls = document.getElementById('seriesControls');
-        document.getElementById('videoModal').classList.add('show');
-        document.body.style.overflow = 'hidden';
+        const playerTitle = document.getElementById('playerTitle');
 
-        // FIX: Check for seasons array existence properly
+        // Switch to Player Page
+        this.switchView('playerPage');
+        this.currentView = 'player';
+        playerTitle.textContent = `Now Watching: ${item.title}`;
+
+        // SERIES LOGIC
         if (item.type === 'series' || (item.seasons && item.seasons.length > 0)) {
             controls.classList.remove('hidden');
             const sSelect = document.getElementById('seasonSelect');
-            // FIX: Ensure seasonNumber exists
-            sSelect.innerHTML = item.seasons.map(s => `<option value="${s.seasonNumber || 1}">Season ${s.seasonNumber || 1}</option>`).join('');
-            this.onSeasonChange();
+
+            if (item.seasons && item.seasons.length > 0) {
+                sSelect.innerHTML = item.seasons.map(s => `<option value="${s.seasonNumber || 1}">Season ${s.seasonNumber || 1}</option>`).join('');
+                this.onSeasonChange();
+            } else {
+                // Fallback if series but no seasons defined yet
+                controls.classList.add('hidden');
+                if (item.videoUrl) this.setPlayerSource(item.videoUrl);
+            }
         } else {
+            // MOVIE LOGIC
             controls.classList.add('hidden');
             this.setPlayerSource(item.videoUrl);
         }
+
         const prog = this.progress[item.id];
-        if (prog) { this.player.once('ready', () => { this.player.currentTime = prog.time; }); }
+        if (prog && this.player) { this.player.once('ready', () => { this.player.currentTime = prog.time; }); }
     }
 
     renderNewContent() { const container = document.getElementById('newContentGrid'); if (!container) return; const all = [...this.movies, ...this.series].sort((a, b) => b.year - a.year).slice(0, 6); container.innerHTML = all.map(i => this.createCard(i)).join(''); }
@@ -853,7 +870,13 @@ class OussaStreamApp {
 
     updateURL(view, id = null) { let url = `?view=${view}`; if (id) url += `&id=${id}`; const state = { view, id }; history.pushState(state, '', url); }
 
-    goBack() { history.back(); }
+    goBack() {
+        if (this.currentView === 'player') {
+            this.closePlayer();
+        } else {
+            history.back();
+        }
+    }
 
     showToast(msg) { const container = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = 'custom-toast'; toast.textContent = msg; container.appendChild(toast); setTimeout(() => toast.remove(), 3500); }
 
@@ -861,9 +884,61 @@ class OussaStreamApp {
 
     setupSearch() { const input = document.getElementById('searchInput'); if (input) input.addEventListener('input', () => { if (this.currentView !== 'movies' && this.currentView !== 'series') { this.showMovies(); } if (this.currentCatalogType === 'movie') this.renderCatalog('movie'); else if (this.currentCatalogType === 'series') this.renderCatalog('series'); }); }
 
-    initHeroCanvas() { const canvas = document.getElementById('heroCanvas'); if (!canvas) return; const ctx = canvas.getContext('2d'); let particles = []; const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }; class Particle { constructor() { this.init(); } init() { this.x = Math.random() * canvas.width; this.y = Math.random() * canvas.height; this.size = Math.random() * 2 + 0.1; this.speedX = Math.random() * 0.4 - 0.2; this.speedY = Math.random() * 0.4 - 0.2; this.opacity = Math.random() * 0.4 + 0.1; } update() { this.x += this.speedX; this.y += this.speedY; if (this.x > canvas.width || this.x < 0 || this.y > canvas.height || this.y < 0) this.init(); } draw() { ctx.fillStyle = `rgba(229, 9, 20, ${this.opacity})`; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill(); } } const init = () => { particles = []; for (let i = 0; i < 80; i++) particles.push(new Particle()); }; const animate = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); particles.forEach(p => { p.update(); p.draw(); }); requestAnimationFrame(animate); }; window.addEventListener('resize', () => { resize(); init(); }); resize(); init(); animate(); }
+    // UPDATED: Robust Video Handler using specific selectors to avoid ID conflicts
+    setPlayerSource(url) {
+        console.log("Attempting to play URL:", url); // DEBUG: Check console to ensure correct link is passed
 
-    setPlayerSource(url) { const isYouTube = url.includes('youtube.com') || url.includes('youtu.be'); this.player.source = { type: 'video', sources: [{ src: url, provider: isYouTube ? 'youtube' : 'html5' }] }; setTimeout(() => this.player.play(), 500); }
+        // FIX: Use querySelector to ensure we target the player inside the Player Page
+        // (Avoids conflicts if you still have the old modal code)
+        const embedPlayer = document.querySelector('#playerPage iframe');
+        const plyrContainer = document.querySelector('#playerPage .plyr');
+
+        // Also grab the raw video element just in case Plyr isn't initialized yet
+        const rawVideo = document.getElementById('player');
+
+        if (!url) {
+            console.error("Video URL is missing for this content");
+            this.showToast("Error: Video link missing");
+            return;
+        }
+
+        const isEmbed = url.includes('/e/') || url.includes('myvidplay') || url.includes('dood') || url.includes('pixel') || url.includes('youtube');
+
+        if (isEmbed) {
+            // --- CASE 1: EMBED ---
+            if (this.player) this.player.stop();
+
+            // Hide Plyr Container
+            if (plyrContainer) plyrContainer.style.display = 'none';
+            if (rawVideo) rawVideo.style.display = 'none'; // Fallback
+
+            // Show & Play Iframe
+            if (embedPlayer) {
+                embedPlayer.classList.remove('hidden');
+                embedPlayer.style.display = 'block';
+                embedPlayer.src = url;
+            }
+        } else {
+            // --- CASE 2: DIRECT FILE ---
+            // Hide Iframe
+            if (embedPlayer) {
+                embedPlayer.classList.add('hidden');
+                embedPlayer.style.display = 'none';
+                embedPlayer.src = '';
+            }
+
+            // Show Plyr
+            if (plyrContainer) plyrContainer.style.display = 'block';
+            if (rawVideo) rawVideo.style.display = 'block';
+
+            const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
+            this.player.source = {
+                type: 'video',
+                sources: [{ src: url, provider: isYouTube ? 'youtube' : 'html5' }]
+            };
+            setTimeout(() => this.player.play(), 500);
+        }
+    }
 
     onSeasonChange() {
         const sNum = parseInt(document.getElementById('seasonSelect').value);
@@ -876,12 +951,30 @@ class OussaStreamApp {
 
         if (season) {
             eSelect.innerHTML = season.episodes.map(e => `<option value="${e.videoUrl}">E${e.episodeNumber}: ${e.title}</option>`).join('');
+            // Optional: Auto play first episode of selected season?
+            // this.playEpisode();
         }
     }
 
     playEpisode() { const url = document.getElementById('episodeSelect').value; if (url) this.setPlayerSource(url); }
 
-    closeVideoModal() { document.getElementById('videoModal').classList.remove('show'); this.player.stop(); document.body.style.overflow = 'auto'; }
+    // UPDATED: Close Player Page
+    closePlayer() {
+        if (this.player) this.player.stop();
+
+        // FIX: Target specific iframe to stop audio
+        const embedPlayer = document.querySelector('#playerPage iframe');
+        if (embedPlayer) embedPlayer.src = '';
+
+        document.body.style.overflow = 'auto';
+
+        if (this.activeContent) {
+            this.currentView = 'details';
+            this.switchView('detailsPage');
+        } else {
+            this.showHome();
+        }
+    }
 
     updateUI() {
         this.renderNewContent();

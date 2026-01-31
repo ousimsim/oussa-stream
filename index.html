@@ -21,9 +21,11 @@
 </head>
 
 <body>
+    <!-- LOADING OVERLAY (UPDATED FOR IMAGE) -->
     <div class="loading-overlay" id="loadingOverlay">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">OussaStream</div>
+        <!-- Replace src below with your Cookie or Bee image URL -->
+        <img src="https://media.tenor.com/On7kvXhzml4AAAAj/loading-gif.gif" alt="Loading..." class="custom-loader-img">
+        <div class="loading-text mt-3">OussaStream</div>
     </div>
 
     <!-- Toast Container -->
@@ -66,14 +68,11 @@
     <!-- Main Content -->
     <main id="mainContent">
 
-        <!-- NEW HERO CAROUSEL -->
+        <!-- HERO CAROUSEL -->
         <div id="heroCarousel" class="carousel slide carousel-fade hero-carousel" data-bs-ride="carousel"
             data-bs-pause="hover">
-            <div class="carousel-indicators" id="heroIndicators">
-                <!-- Indicators injected by JS -->
-            </div>
+            <div class="carousel-indicators" id="heroIndicators"></div>
             <div class="carousel-inner" id="heroSlides">
-                <!-- Slides injected by JS -->
                 <div class="carousel-item active">
                     <div class="hero-fallback-bg"></div>
                     <div class="hero-overlay"></div>
@@ -274,14 +273,61 @@
                     </div>
 
                     <!-- Reviews List -->
-                    <div id="reviewsList" class="reviews-list">
-                        <!-- Reviews will be injected here -->
-                    </div>
+                    <div id="reviewsList" class="reviews-list"></div>
                 </div>
 
                 <div class="col-md-4 mt-5 mt-md-0">
                     <h3 class="section-title">More Like This</h3>
                     <div class="content-grid-small" id="detailRelatedGrid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW PLAYER PAGE (Replaces Modal) -->
+    <div id="playerPage" class="player-page hidden">
+        <!-- Back Button Area -->
+        <div class="player-header">
+            <button class="player-back-btn" onclick="app.closePlayer()">
+                <i class="fas fa-arrow-left"></i> <span class="d-none d-md-inline">Back to Details</span>
+            </button>
+            <h3 id="playerTitle" class="player-title">Now Watching</h3>
+        </div>
+
+        <!-- Main Video Area -->
+        <div class="player-main-container">
+            <div class="video-wrapper">
+                <video id="player" playsinline controls></video>
+                <iframe id="embedPlayer" class="hidden" frameborder="0" allowfullscreen></iframe>
+            </div>
+        </div>
+
+        <!-- Series Controls (Bottom) -->
+        <div id="seriesControls" class="series-controls hidden">
+            <div class="container">
+                <div class="controls-glass-panel">
+                    <div class="row align-items-center">
+                        <div class="col-md-4 text-white mb-2 mb-md-0">
+                            <span class="fw-bold"><i class="fas fa-layer-group text-danger me-2"></i>Select
+                                Episode</span>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <div class="custom-select-wrapper">
+                                <select id="seasonSelect" class="player-select" onchange="app.onSeasonChange()">
+                                    <!-- Seasons -->
+                                </select>
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <div class="custom-select-wrapper">
+                                <select id="episodeSelect" class="player-select" onchange="app.playEpisode()">
+                                    <!-- Episodes -->
+                                </select>
+                                <i class="fas fa-play-circle"></i>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -354,32 +400,6 @@
                 </form>
                 <hr class="dropdown-divider my-4" style="border-color: rgba(255,255,255,0.1);">
                 <button class="btn btn-outline-light w-100 py-2" onclick="app.logout()">Sign Out</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Video Modal -->
-    <div id="videoModal" class="modal">
-        <div class="modal-content video-only-content">
-            <button class="close-modal" onclick="app.closeVideoModal()"><i class="fas fa-times"></i></button>
-            <div class="video-container" id="playerContainer">
-                <video id="player" playsinline controls></video>
-            </div>
-            <div id="seriesControls" class="episode-selector hidden p-3 bg-dark">
-                <div class="container">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <label class="text-white small">Season</label>
-                            <select id="seasonSelect" class="custom-select w-100"
-                                onchange="app.onSeasonChange()"></select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="text-white small">Episode</label>
-                            <select id="episodeSelect" class="custom-select w-100"
-                                onchange="app.playEpisode()"></select>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
