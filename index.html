@@ -21,11 +21,12 @@
 </head>
 
 <body>
-    <!-- LOADING OVERLAY (UPDATED FOR IMAGE) -->
+    <!-- NEW LOADING OVERLAY (Modern Glowing Logo) -->
     <div class="loading-overlay" id="loadingOverlay">
-        <!-- Replace src below with your Cookie or Bee image URL -->
-        <img src="https://media.tenor.com/On7kvXhzml4AAAAj/loading-gif.gif" alt="Loading..." class="custom-loader-img">
-        <div class="loading-text mt-3">OussaStream</div>
+        <div class="logo-container">
+            <img src="https://i.ibb.co/MD3HFP46/Untitled-Design-1-Edited-Edited.png" alt="OussaStream">
+        </div>
+        <div class="loader-line"></div>
     </div>
 
     <!-- Toast Container -->
@@ -222,26 +223,24 @@
                             <span id="detailRating" class="badge bg-warning text-dark me-2"></span>
                             <span id="detailGenre" class="text-gray-small"></span>
                         </div>
-                        <p id="detailDesc" class="lead mb-4" style="max-width: 800px; color: #ddd;"></p>
-                        <div class="action-buttons mb-5">
-                            <button id="detailPlayBtn" class="cta-button me-3">
+                        <p id="detailDesc" class="lead mb-4"
+                            style="max-width: 800px; color: #ddd; font-size: 1.1rem; line-height: 1.6;"></p>
+
+                        <div class="action-buttons mb-5 d-flex flex-column flex-md-row gap-3">
+                            <button id="detailPlayBtn" class="hero-btn hero-btn-play">
                                 <i class="fas fa-play"></i> Watch Now
                             </button>
-                            <button id="detailListBtn" class="btn btn-outline-light px-4 py-3 rounded">
+                            <button id="detailListBtn" class="hero-btn hero-btn-list">
                                 <i class="far fa-heart"></i> Add to List
                             </button>
-                        </div>
-                        <div class="cast-section mb-4">
-                            <h5 class="text-gray-small mb-3 text-uppercase">Top Cast</h5>
-                            <div id="detailCast" class="d-flex gap-4 overflow-auto pb-2 cast-scroll"></div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- REVIEWS SECTION -->
-        <div class="container section pt-0">
+        <!-- REVIEWS & RELATED (RESTORED) -->
+        <div class="container section pt-0 related-section">
             <div class="row">
                 <div class="col-md-8">
                     <h3 class="section-title">Reviews & Ratings</h3>
@@ -284,9 +283,8 @@
         </div>
     </div>
 
-    <!-- NEW PLAYER PAGE (Replaces Modal) -->
+    <!-- NEW PLAYER PAGE -->
     <div id="playerPage" class="player-page hidden">
-        <!-- Back Button Area -->
         <div class="player-header">
             <button class="player-back-btn" onclick="app.closePlayer()">
                 <i class="fas fa-arrow-left"></i> <span class="d-none d-md-inline">Back to Details</span>
@@ -294,7 +292,6 @@
             <h3 id="playerTitle" class="player-title">Now Watching</h3>
         </div>
 
-        <!-- Main Video Area -->
         <div class="player-main-container">
             <div class="video-wrapper">
                 <video id="player" playsinline controls></video>
@@ -302,7 +299,6 @@
             </div>
         </div>
 
-        <!-- Series Controls (Bottom) -->
         <div id="seriesControls" class="series-controls hidden">
             <div class="container">
                 <div class="controls-glass-panel">
@@ -313,17 +309,14 @@
                         </div>
                         <div class="col-6 col-md-4">
                             <div class="custom-select-wrapper">
-                                <select id="seasonSelect" class="player-select" onchange="app.onSeasonChange()">
-                                    <!-- Seasons -->
-                                </select>
+                                <select id="seasonSelect" class="player-select"
+                                    onchange="app.onSeasonChange()"></select>
                                 <i class="fas fa-chevron-down"></i>
                             </div>
                         </div>
                         <div class="col-6 col-md-4">
                             <div class="custom-select-wrapper">
-                                <select id="episodeSelect" class="player-select" onchange="app.playEpisode()">
-                                    <!-- Episodes -->
-                                </select>
+                                <select id="episodeSelect" class="player-select" onchange="app.playEpisode()"></select>
                                 <i class="fas fa-play-circle"></i>
                             </div>
                         </div>
