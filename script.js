@@ -26,6 +26,7 @@ class OussaStreamApp {
 
         // Reviews Data
         this.activeReviews = [];
+        this.editingReviewId = null; // Track review being edited
 
         this.currentView = 'home';
         this.activeContent = null;
@@ -81,6 +82,7 @@ class OussaStreamApp {
                 this.myList = JSON.parse(localStorage.getItem('oussaStreamList')) || [];
                 this.progress = JSON.parse(localStorage.getItem('oussaStreamProgress')) || {};
                 this.updateUI();
+                this.cancelEdit(); // Cancel any editing on logout
             }
         });
     }
@@ -102,7 +104,7 @@ class OussaStreamApp {
                 avatarHtml = letter;
             }
 
-            // UPDATED: Removed Name Span, only Avatar remains
+            // Only Avatar in Navbar
             container.innerHTML = `
                 <div class="d-flex align-items-center gap-3">
                     <div class="dropdown">
@@ -457,7 +459,8 @@ class OussaStreamApp {
                 return;
             }
 
-            this.activeReviews = Object.values(data).sort((a, b) => b.timestamp - a.timestamp);
+            // Map keys to IDs and Sort
+            this.activeReviews = Object.entries(data).map(([key, value]) => ({ id: key, ...value })).sort((a, b) => b.timestamp - a.timestamp);
 
             const total = this.activeReviews.reduce((sum, r) => sum + parseInt(r.rating), 0);
             const avg = (total / this.activeReviews.length).toFixed(1);
@@ -470,6 +473,17 @@ class OussaStreamApp {
                     userAvatarHtml = `<img src="${r.userAvatar}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;">`;
                 } else {
                     userAvatarHtml = `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--primary); border-radius: 4px;">${r.userName.charAt(0).toUpperCase()}</div>`;
+                }
+
+                // Show Edit/Delete buttons ONLY if current user is the owner
+                let actionsHtml = '';
+                if (this.user && r.userId === this.user.uid) {
+                    actionsHtml = `
+                        <div class="review-actions mt-2 text-end">
+                            <button class="btn btn-sm btn-outline-light me-2" onclick="app.editReview('${r.id}')" style="font-size: 0.75rem; padding: 2px 10px; border-radius: 20px;">Edit</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="app.deleteReview('${r.id}')" style="font-size: 0.75rem; padding: 2px 10px; border-radius: 20px;">Delete</button>
+                        </div>
+                    `;
                 }
 
                 return `
@@ -487,6 +501,7 @@ class OussaStreamApp {
                     </div>
                     <p class="review-text mb-1">${r.text}</p>
                     <small class="review-date">${this.timeAgo(r.timestamp)}</small>
+                    ${actionsHtml}
                 </div>
             `}).join('');
         });
@@ -505,6 +520,16 @@ class OussaStreamApp {
         e.preventDefault();
         if (!this.user || !this.activeContent) return;
 
+        // ONE REVIEW PER USER CHECK
+        // Check if user already has a review for this content AND we are not in edit mode
+        if (!this.editingReviewId) {
+            const existingReview = this.activeReviews.find(r => r.userId === this.user.uid);
+            if (existingReview) {
+                this.showToast("You have already reviewed this title. Edit your existing review instead.");
+                return;
+            }
+        }
+
         const rating = document.getElementById('ratingValue').value;
         const text = document.getElementById('reviewText').value;
 
@@ -522,17 +547,88 @@ class OussaStreamApp {
             timestamp: Date.now()
         };
 
-        const newReviewRef = this.db.ref('reviews/' + this.activeContent.id).push();
-        newReviewRef.set(reviewData).then(() => {
-            this.showToast("Review Posted!");
-            document.getElementById('reviewText').value = '';
-            this.setRating(0);
-            document.getElementById('ratingValue').value = '';
-            document.getElementById('ratingText').textContent = 'Select rating';
-        }).catch(err => {
-            console.error(err);
-            this.showToast("Failed to post review. Check permissions.");
-        });
+        if (this.editingReviewId) {
+            // Update Existing Review
+            this.db.ref('reviews/' + this.activeContent.id + '/' + this.editingReviewId).update(reviewData)
+                .then(() => {
+                    this.showToast("Review Updated!");
+                    this.cancelEdit();
+                }).catch(err => {
+                    console.error(err);
+                    this.showToast("Failed to update. Check permissions.");
+                });
+        } else {
+            // Create New Review
+            const newReviewRef = this.db.ref('reviews/' + this.activeContent.id).push();
+            newReviewRef.set(reviewData).then(() => {
+                this.showToast("Review Posted!");
+                this.cancelEdit(); // Reset form
+            }).catch(err => {
+                console.error(err);
+                this.showToast("Failed to post review. Check permissions.");
+            });
+        }
+    }
+
+    // --- REVIEW EDIT/DELETE LOGIC ---
+
+    editReview(reviewId) {
+        const review = this.activeReviews.find(r => r.id === reviewId);
+        if (!review) return;
+
+        this.editingReviewId = reviewId;
+        document.getElementById('reviewText').value = review.text;
+        this.setRating(review.rating);
+
+        // Change Button Text
+        const submitBtn = document.querySelector('#reviewInputContainer button[type="submit"]');
+        submitBtn.textContent = "Update Review";
+        submitBtn.classList.remove('btn-danger');
+        submitBtn.classList.add('btn-warning');
+
+        // Add Cancel Button
+        let cancelBtn = document.getElementById('cancelEditBtn');
+        if (!cancelBtn) {
+            cancelBtn = document.createElement('button');
+            cancelBtn.id = 'cancelEditBtn';
+            cancelBtn.type = 'button';
+            cancelBtn.className = 'btn btn-outline-light btn-sm px-4 ms-2';
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.onclick = () => this.cancelEdit();
+            submitBtn.parentNode.appendChild(cancelBtn);
+        }
+
+        document.getElementById('reviewInputContainer').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    cancelEdit() {
+        this.editingReviewId = null;
+        document.getElementById('reviewText').value = '';
+        this.setRating(0);
+        document.getElementById('ratingValue').value = '';
+        document.getElementById('ratingText').textContent = 'Select rating';
+
+        const submitBtn = document.querySelector('#reviewInputContainer button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.textContent = "Post Review";
+            submitBtn.classList.add('btn-danger');
+            submitBtn.classList.remove('btn-warning');
+        }
+
+        const cancelBtn = document.getElementById('cancelEditBtn');
+        if (cancelBtn) cancelBtn.remove();
+    }
+
+    deleteReview(reviewId) {
+        if (!this.user || !this.activeContent) return;
+        if (!confirm("Are you sure you want to delete this review?")) return;
+
+        this.db.ref('reviews/' + this.activeContent.id + '/' + reviewId).remove()
+            .then(() => {
+                this.showToast("Review Deleted");
+                if (this.editingReviewId === reviewId) this.cancelEdit();
+            })
+            .catch(err => this.showToast(err.message));
     }
 
     // --- BASE LOGIC ---
@@ -598,6 +694,48 @@ class OussaStreamApp {
         document.getElementById('yearSelect').value = 'all';
         document.getElementById('sortSelect').value = 'newest';
         document.getElementById('searchInput').value = '';
+    }
+
+    // --- HELPER: AUTO ROTATION & FULLSCREEN ---
+    async enterFullscreenAndRotate() {
+        const playerPage = document.getElementById('playerPage');
+        if (!playerPage) return;
+
+        // 1. Request Fullscreen
+        try {
+            if (playerPage.requestFullscreen) {
+                await playerPage.requestFullscreen();
+            } else if (playerPage.webkitRequestFullscreen) {
+                await playerPage.webkitRequestFullscreen();
+            } else if (playerPage.msRequestFullscreen) {
+                await playerPage.msRequestFullscreen();
+            }
+        } catch (err) {
+            console.log("Fullscreen request denied:", err);
+        }
+
+        // 2. Lock Orientation (Works on Android/Chrome)
+        if (screen.orientation && screen.orientation.lock) {
+            try {
+                await screen.orientation.lock('landscape');
+            } catch (err) {
+                console.log("Orientation lock failed:", err);
+            }
+        }
+    }
+
+    exitFullscreenAndRotate() {
+        // 1. Exit Fullscreen
+        if (document.exitFullscreen) {
+            document.exitFullscreen().catch(err => console.log(err));
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        }
+
+        // 2. Unlock Orientation
+        if (screen.orientation && screen.orientation.unlock) {
+            screen.orientation.unlock();
+        }
     }
 
     // --- CRITICAL FIX: STOP VIDEO WHEN SWITCHING VIEWS ---
@@ -733,6 +871,7 @@ class OussaStreamApp {
         listBtn.onclick = () => { this.toggleMyList(item.id); this.updateDetailListBtn(item.id); };
 
         // RESTORED: Fetch Reviews and Update UI
+        this.cancelEdit(); // Reset form if opened new movie
         this.fetchReviews(id);
         this.updateReviewUI(!!this.user);
 
@@ -794,6 +933,11 @@ class OussaStreamApp {
 
         // Initialize Auto-Hide Logic
         this.setupPlayerUI();
+
+        // TRIGGER AUTO-ROTATION ON MOBILE
+        if (window.innerWidth < 768) {
+            this.enterFullscreenAndRotate();
+        }
 
         if (playerTitle) playerTitle.textContent = `Now Watching: ${item.title}`;
 
@@ -973,6 +1117,9 @@ class OussaStreamApp {
         // Stop Iframe
         const embedPlayer = document.querySelector('#playerPage iframe');
         if (embedPlayer) embedPlayer.src = '';
+
+        // EXIT FULLSCREEN/ROTATION
+        this.exitFullscreenAndRotate();
 
         this.stopPlayerUiTimer(); // Reset UI timer
         document.body.style.overflow = 'auto';
