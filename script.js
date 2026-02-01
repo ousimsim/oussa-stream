@@ -55,6 +55,7 @@ class OussaStreamApp {
         this.handleNavbarScroll();
         this.setupSearch();
         this.setupFilters();
+        this.setupFullscreenListener(); // New Listener
 
         setTimeout(() => {
             const loader = document.getElementById('loadingOverlay');
@@ -234,7 +235,7 @@ class OussaStreamApp {
         } finally {
             // Restore Button State
             btn.disabled = false;
-            this.updateAuthModalUI(); // This resets the text to "Sign In" or "Sign Up" correctly
+            this.updateAuthModalUI();
         }
     }
 
@@ -335,16 +336,12 @@ class OussaStreamApp {
                 try {
                     await this.db.ref('users/' + this.user.uid + '/avatar').set(this.tempAvatarData);
                     this.showToast("Avatar Updated!");
-
-                    // UPDATE REVIEWS WITH NEW AVATAR & NAME
                     this.updateUserReviews(this.user.uid, name || this.user.displayName, this.tempAvatarData);
-
                 } catch (dbError) {
                     console.error("Avatar upload failed:", dbError);
                     this.showToast("Profile updated, but Avatar failed (Check DB Rules)");
                 }
             } else if (name && name !== this.user.displayName) {
-                // If only name changed, still update reviews
                 this.updateUserReviews(this.user.uid, name, this.avatar);
             }
 
@@ -361,11 +358,7 @@ class OussaStreamApp {
         }
     }
 
-    // --- NEW HELPER: UPDATE ALL USER REVIEWS ---
     updateUserReviews(userId, newName, newAvatar) {
-        // This is a heavy operation if there are many movies, but okay for this scale
-        // We need to find reviews by this user across ALL movies
-
         this.db.ref('reviews').once('value', (snapshot) => {
             const allReviews = snapshot.val();
             if (!allReviews) return;
@@ -377,7 +370,6 @@ class OussaStreamApp {
                 Object.keys(movieReviews).forEach(reviewId => {
                     const review = movieReviews[reviewId];
                     if (review.userId === userId) {
-                        // Found a review by this user, add to updates
                         if (newName) updates[`reviews/${movieId}/${reviewId}/userName`] = newName;
                         if (newAvatar) updates[`reviews/${movieId}/${reviewId}/userAvatar`] = newAvatar;
                     }
@@ -478,17 +470,15 @@ class OussaStreamApp {
         });
     }
 
-    // Helper: Format Date with AM/PM
     formatDate(timestamp) {
         const date = new Date(timestamp);
         let hours = date.getHours();
         const minutes = date.getMinutes();
         const ampm = hours >= 12 ? 'PM' : 'AM';
         hours = hours % 12;
-        hours = hours ? hours : 12; // the hour '0' should be '12'
+        hours = hours ? hours : 12;
         const strMin = minutes < 10 ? '0' + minutes : minutes;
 
-        // Format example: Feb 1, 2026 at 12:39 PM
         const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
         const month = months[date.getMonth()];
         const day = date.getDate();
@@ -512,7 +502,6 @@ class OussaStreamApp {
                 return;
             }
 
-            // Map keys to IDs and Sort
             this.activeReviews = Object.entries(data).map(([key, value]) => ({ id: key, ...value })).sort((a, b) => b.timestamp - a.timestamp);
 
             const total = this.activeReviews.reduce((sum, r) => sum + parseInt(r.rating), 0);
@@ -528,7 +517,6 @@ class OussaStreamApp {
                     userAvatarHtml = `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--primary); border-radius: 4px;">${r.userName.charAt(0).toUpperCase()}</div>`;
                 }
 
-                // Show Edit/Delete buttons ONLY if current user is the owner
                 let actionsHtml = '';
                 if (this.user && r.userId === this.user.uid) {
                     actionsHtml = `
@@ -573,8 +561,6 @@ class OussaStreamApp {
         e.preventDefault();
         if (!this.user || !this.activeContent) return;
 
-        // ONE REVIEW PER USER CHECK
-        // Check if user already has a review for this content AND we are not in edit mode
         if (!this.editingReviewId) {
             const existingReview = this.activeReviews.find(r => r.userId === this.user.uid);
             if (existingReview) {
@@ -601,7 +587,6 @@ class OussaStreamApp {
         };
 
         if (this.editingReviewId) {
-            // Update Existing Review
             this.db.ref('reviews/' + this.activeContent.id + '/' + this.editingReviewId).update(reviewData)
                 .then(() => {
                     this.showToast("Review Updated!");
@@ -611,19 +596,16 @@ class OussaStreamApp {
                     this.showToast("Failed to update. Check permissions.");
                 });
         } else {
-            // Create New Review
             const newReviewRef = this.db.ref('reviews/' + this.activeContent.id).push();
             newReviewRef.set(reviewData).then(() => {
                 this.showToast("Review Posted!");
-                this.cancelEdit(); // Reset form
+                this.cancelEdit();
             }).catch(err => {
                 console.error(err);
                 this.showToast("Failed to post review. Check permissions.");
             });
         }
     }
-
-    // --- REVIEW EDIT/DELETE LOGIC ---
 
     editReview(reviewId) {
         const review = this.activeReviews.find(r => r.id === reviewId);
@@ -633,13 +615,11 @@ class OussaStreamApp {
         document.getElementById('reviewText').value = review.text;
         this.setRating(review.rating);
 
-        // Change Button Text
         const submitBtn = document.querySelector('#reviewInputContainer button[type="submit"]');
         submitBtn.textContent = "Update Review";
         submitBtn.classList.remove('btn-danger');
         submitBtn.classList.add('btn-warning');
 
-        // Add Cancel Button
         let cancelBtn = document.getElementById('cancelEditBtn');
         if (!cancelBtn) {
             cancelBtn = document.createElement('button');
@@ -749,13 +729,13 @@ class OussaStreamApp {
         document.getElementById('searchInput').value = '';
     }
 
-    // --- HELPER: AUTO ROTATION & FULLSCREEN ---
+    // --- HELPER: AUTO ROTATION & FULLSCREEN (UPDATED) ---
     async enterFullscreenAndRotate() {
         const playerPage = document.getElementById('playerPage');
         if (!playerPage) return;
 
-        // 1. Request Fullscreen
         try {
+            // 1. Request Fullscreen FIRST and wait for it
             if (playerPage.requestFullscreen) {
                 await playerPage.requestFullscreen();
             } else if (playerPage.webkitRequestFullscreen) {
@@ -763,45 +743,59 @@ class OussaStreamApp {
             } else if (playerPage.msRequestFullscreen) {
                 await playerPage.msRequestFullscreen();
             }
-        } catch (err) {
-            console.log("Fullscreen request denied:", err);
-        }
 
-        // 2. Lock Orientation (Works on Android/Chrome)
-        if (screen.orientation && screen.orientation.lock) {
-            try {
-                await screen.orientation.lock('landscape');
-            } catch (err) {
-                console.log("Orientation lock failed:", err);
+            // 2. Lock Orientation (Only works if fullscreen is active)
+            if (screen.orientation && screen.orientation.lock) {
+                // Add a small delay to ensure the browser registers the fullscreen state
+                setTimeout(async () => {
+                    try {
+                        await screen.orientation.lock('landscape');
+                        console.log("Orientation locked to landscape");
+                    } catch (err) {
+                        console.log("Orientation lock failed (likely browser restriction):", err);
+                    }
+                }, 200);
             }
+        } catch (err) {
+            console.log("Fullscreen request failed:", err);
         }
     }
 
     exitFullscreenAndRotate() {
-        // 1. Exit Fullscreen
+        // 1. Unlock Orientation
+        if (screen.orientation && screen.orientation.unlock) {
+            screen.orientation.unlock();
+        }
+
+        // 2. Exit Fullscreen
         if (document.exitFullscreen) {
             document.exitFullscreen().catch(err => console.log(err));
         } else if (document.webkitExitFullscreen) {
             document.webkitExitFullscreen();
         }
+    }
 
-        // 2. Unlock Orientation
-        if (screen.orientation && screen.orientation.unlock) {
-            screen.orientation.unlock();
-        }
+    setupFullscreenListener() {
+        // Listener to detect if user exits fullscreen manually (e.g., via back button)
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement && this.currentView === 'player') {
+                // User exited fullscreen but didn't close the player manually
+                // We might want to unlock orientation here
+                if (screen.orientation && screen.orientation.unlock) {
+                    screen.orientation.unlock();
+                }
+            }
+        });
     }
 
     // --- CRITICAL FIX: STOP VIDEO WHEN SWITCHING VIEWS ---
     switchView(id) {
-        // 1. Reset scrolling
         document.body.style.overflow = 'auto';
 
-        // 2. FORCE STOP PLYR VIDEO
         if (this.player) {
             try { this.player.stop(); } catch (e) { }
         }
 
-        // 3. FORCE STOP ALL IFRAMES (Doodstream/Vidplay/YouTube)
         const iframes = document.querySelectorAll('iframe');
         iframes.forEach(iframe => {
             if (iframe.id === 'embedPlayer' || iframe.closest('.player-page') || iframe.closest('.video-container') || iframe.closest('#videoModal')) {
@@ -809,13 +803,11 @@ class OussaStreamApp {
             }
         });
 
-        // 4. Reset Player UI
-        this.stopPlayerUiTimer(); // Clear any existing timer
+        this.stopPlayerUiTimer();
         const playerPage = document.getElementById('playerPage');
         if (playerPage) {
-            playerPage.classList.remove('player-ui-hidden'); // Show UI by default
+            playerPage.classList.remove('player-ui-hidden');
 
-            // Remove event listeners to prevent memory leaks when leaving player page
             if (id !== 'playerPage') {
                 playerPage.onmousemove = null;
                 playerPage.ontouchstart = null;
@@ -823,7 +815,6 @@ class OussaStreamApp {
             }
         }
 
-        // 5. Toggle Views
         ['mainContent', 'catalogPage', 'myListPage', 'detailsPage', 'playerPage'].forEach(p => {
             const el = document.getElementById(p);
             if (el) el.classList.toggle('hidden', p !== id);
@@ -923,12 +914,10 @@ class OussaStreamApp {
         this.updateDetailListBtn(item.id);
         listBtn.onclick = () => { this.toggleMyList(item.id); this.updateDetailListBtn(item.id); };
 
-        // RESTORED: Fetch Reviews and Update UI
-        this.cancelEdit(); // Reset form if opened new movie
+        this.cancelEdit();
         this.fetchReviews(id);
         this.updateReviewUI(!!this.user);
 
-        // Use small grid for side-by-side layout
         this.renderRelated(item.type, item.id, 'detailRelatedGrid');
 
         this.switchView('detailsPage');
@@ -941,27 +930,22 @@ class OussaStreamApp {
         const playerPage = document.getElementById('playerPage');
         if (!playerPage) return;
 
-        // Function to show UI and reset timer
         const showUI = () => {
             playerPage.classList.remove('player-ui-hidden');
             this.resetPlayerUiTimer();
         };
 
-        // Event listeners for activity
         playerPage.onmousemove = showUI;
         playerPage.ontouchstart = showUI;
         playerPage.onclick = showUI;
 
-        // Initial setup: start timer immediately
         this.resetPlayerUiTimer();
     }
 
     resetPlayerUiTimer() {
         this.stopPlayerUiTimer();
-        // Hide UI after 3 seconds of inactivity
         this.playerUiTimeout = setTimeout(() => {
             const playerPage = document.getElementById('playerPage');
-            // Only hide if we are currently viewing the player page
             if (playerPage && this.currentView === 'player') {
                 playerPage.classList.add('player-ui-hidden');
             }
@@ -984,7 +968,6 @@ class OussaStreamApp {
         this.switchView('playerPage');
         this.currentView = 'player';
 
-        // Initialize Auto-Hide Logic
         this.setupPlayerUI();
 
         // TRIGGER AUTO-ROTATION ON MOBILE
@@ -1087,7 +1070,13 @@ class OussaStreamApp {
 
     updateURL(view, id = null) { let url = `?view=${view}`; if (id) url += `&id=${id}`; const state = { view, id }; history.pushState(state, '', url); }
 
-    goBack() { history.back(); }
+    goBack() {
+        if (this.currentView === 'player') {
+            this.closePlayer();
+        } else {
+            history.back();
+        }
+    }
 
     showToast(msg) { const container = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = 'custom-toast'; toast.textContent = msg; container.appendChild(toast); setTimeout(() => toast.remove(), 3500); }
 
