@@ -14,25 +14,23 @@ firebase.initializeApp(firebaseConfig);
 class OussaStreamApp {
     constructor() {
         this.db = firebase.database();
-        this.auth = firebase.auth(); // Init Auth
-        this.user = null; // Store current user
-        this.avatar = null; // Store avatar base64
-        this.tempAvatarData = null; // For preview before saving
+        this.auth = firebase.auth(); 
+        this.user = null; 
+        this.avatar = null; 
+        this.tempAvatarData = null; 
 
         this.movies = [];
         this.series = [];
         this.myList = [];
         this.progress = {};
 
-        // Reviews Data
         this.activeReviews = [];
-        this.editingReviewId = null; // Track review being edited
+        this.editingReviewId = null; 
 
         this.currentView = 'home';
         this.activeContent = null;
         this.player = null;
-
-        // Player UI Timeout Variable
+        
         this.playerUiTimeout = null;
 
         this.itemsPerPage = 8;
@@ -41,22 +39,21 @@ class OussaStreamApp {
         this.activeFilters = { genre: 'all', year: 'all', sort: 'newest' };
 
         this.isLoginMode = true;
-        this.isResetMode = false; // Add reset state
+        this.isResetMode = false; 
 
         window.onpopstate = (event) => this.handlePopState(event);
         this.init();
     }
 
     init() {
-        // Auth listener starts immediately but waits for Firebase response
         this.initAuth();
         this.initPlayer();
         this.fetchData();
         this.handleNavbarScroll();
         this.setupSearch();
         this.setupFilters();
-        this.setupFullscreenListener(); // New Listener
-
+        this.setupFullscreenListener();
+        
         setTimeout(() => {
             const loader = document.getElementById('loadingOverlay');
             if (loader) loader.classList.add('hidden');
@@ -64,8 +61,13 @@ class OussaStreamApp {
         }, 1500);
     }
 
-    // --- AUTHENTICATION LOGIC ---
+    // --- SECURITY HELPER ---
+    escapeHtml(text) {
+        if (!text) return text;
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
 
+    // --- AUTHENTICATION LOGIC ---
     initAuth() {
         this.auth.onAuthStateChanged((user) => {
             if (user) {
@@ -83,36 +85,29 @@ class OussaStreamApp {
                 this.myList = JSON.parse(localStorage.getItem('oussaStreamList')) || [];
                 this.progress = JSON.parse(localStorage.getItem('oussaStreamProgress')) || {};
                 this.updateUI();
-                this.cancelEdit(); // Cancel any editing on logout
+                this.cancelEdit(); 
             }
         });
     }
 
     updateAuthUI(isLoggedIn) {
         const container = document.getElementById('authSection');
-        if (!container) return; // Guard clause
+        if (!container) return;
 
         if (isLoggedIn && this.user) {
-            const name = this.user.displayName || (this.user.email ? this.user.email.split('@')[0] : 'User');
             let avatarHtml = '';
-
-            // Show Image if available, else Show Letter
             if (this.avatar) {
                 avatarHtml = `<img src="${this.avatar}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;">`;
             } else {
-                // Use first letter of name or email
-                const letter = name.charAt(0).toUpperCase();
+                const letter = (this.user.displayName || this.user.email || 'U').charAt(0).toUpperCase();
                 avatarHtml = letter;
             }
 
-            // Only Avatar in Navbar
             container.innerHTML = `
                 <div class="d-flex align-items-center gap-3">
                     <div class="dropdown">
                         <div class="d-flex align-items-center" id="authAvatarBtn" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
-                            <div class="auth-avatar">
-                                ${avatarHtml}
-                            </div>
+                            <div class="auth-avatar">${avatarHtml}</div>
                         </div>
                         <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark" aria-labelledby="authAvatarBtn">
                             <li><a class="dropdown-item" href="#" onclick="app.openProfileModal()">My Profile</a></li>
@@ -132,13 +127,11 @@ class OussaStreamApp {
             this.avatar = snap.val() || null;
             this.updateAuthUI(true);
         });
-
         this.db.ref('users/' + uid + '/myList').on('value', snap => {
             this.myList = snap.val() || [];
             if (this.currentView === 'mylist') this.renderMyList();
             this.updateUI();
         });
-
         this.db.ref('users/' + uid + '/progress').on('value', snap => {
             this.progress = snap.val() || {};
             this.renderContinueWatching();
@@ -160,9 +153,7 @@ class OussaStreamApp {
 
     toggleResetMode() {
         this.isResetMode = !this.isResetMode;
-        if (!this.isResetMode) {
-            this.isLoginMode = true;
-        }
+        if (!this.isResetMode) { this.isLoginMode = true; }
         this.updateAuthModalUI();
     }
 
@@ -180,7 +171,7 @@ class OussaStreamApp {
             btn.textContent = 'Send Reset Email';
             passGroup.style.display = 'none';
             switchContainer.style.display = 'none';
-            passGroup.style.display = 'block';
+            passGroup.style.display = 'block'; 
             document.getElementById('authPassword').style.display = 'none';
             forgotLink.textContent = 'Back to Sign In';
         } else {
@@ -194,25 +185,23 @@ class OussaStreamApp {
                 btn.textContent = 'Sign In';
                 switchText.textContent = 'New to OussaStream? ';
                 switchLink.textContent = 'Sign up now.';
-                forgotLink.style.display = 'inline-block';
+                forgotLink.style.display = 'inline-block'; 
             } else {
                 title.textContent = 'Sign Up';
                 btn.textContent = 'Sign Up';
                 switchText.textContent = 'Already have an account? ';
                 switchLink.textContent = 'Sign in now.';
-                forgotLink.style.display = 'none';
+                forgotLink.style.display = 'none'; 
             }
         }
     }
 
-    // UPDATED: Handle Auth with Loading State
     async handleAuth(e) {
         e.preventDefault();
         const email = document.getElementById('authEmail').value;
         const pass = document.getElementById('authPassword').value;
         const btn = document.getElementById('authSubmitBtn');
 
-        // Set Loading State
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Loading...';
 
@@ -223,7 +212,6 @@ class OussaStreamApp {
                 this.toggleResetMode();
                 return;
             }
-
             if (this.isLoginMode) {
                 await this.auth.signInWithEmailAndPassword(email, pass);
             } else {
@@ -233,18 +221,15 @@ class OussaStreamApp {
         } catch (error) {
             this.showToast(error.message);
         } finally {
-            // Restore Button State
             btn.disabled = false;
-            this.updateAuthModalUI();
+            this.updateAuthModalUI(); 
         }
     }
 
-    // --- PROFILE & AVATAR MANAGEMENT ---
-
+    // --- PROFILE MANAGEMENT ---
     openProfileModal() {
         if (!this.user) return;
         const name = this.user.displayName || (this.user.email ? this.user.email.split('@')[0] : 'User');
-
         const img = document.getElementById('profileAvatarImg');
         const letter = document.getElementById('profileAvatarLetter');
 
@@ -270,11 +255,7 @@ class OussaStreamApp {
     handleAvatarSelect(event) {
         const file = event.target.files[0];
         if (!file) return;
-
-        if (file.size > 2 * 1024 * 1024) {
-            this.showToast("Image too large. Max 2MB.");
-            return;
-        }
+        if (file.size > 2 * 1024 * 1024) { this.showToast("Image too large. Max 2MB."); return; }
 
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -306,7 +287,7 @@ class OussaStreamApp {
             canvas.height = height;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
-            callback(canvas.toDataURL('image/jpeg', 0.7));
+            callback(canvas.toDataURL('image/jpeg', 0.7)); 
         };
     }
 
@@ -317,21 +298,10 @@ class OussaStreamApp {
 
         try {
             const updates = [];
+            if (name && name !== this.user.displayName) { updates.push(this.user.updateProfile({ displayName: name })); }
+            if (password) { updates.push(this.user.updatePassword(password)); }
+            if (updates.length > 0) { await Promise.all(updates); this.showToast("Profile Updated!"); }
 
-            if (name && name !== this.user.displayName) {
-                updates.push(this.user.updateProfile({ displayName: name }));
-            }
-
-            if (password) {
-                updates.push(this.user.updatePassword(password));
-            }
-
-            if (updates.length > 0) {
-                await Promise.all(updates);
-                this.showToast("Profile Updated!");
-            }
-
-            // 3. Update Avatar (Database) & SYNC REVIEWS
             if (this.tempAvatarData) {
                 try {
                     await this.db.ref('users/' + this.user.uid + '/avatar').set(this.tempAvatarData);
@@ -344,17 +314,13 @@ class OussaStreamApp {
             } else if (name && name !== this.user.displayName) {
                 this.updateUserReviews(this.user.uid, name, this.avatar);
             }
-
             this.closeProfileModal();
             this.updateAuthUI(true);
-
         } catch (error) {
             if (error.code === 'auth/requires-recent-login') {
                 this.showToast("Security: Please sign in again to change password.");
                 this.logout();
-            } else {
-                this.showToast(error.message);
-            }
+            } else { this.showToast(error.message); }
         }
     }
 
@@ -362,9 +328,7 @@ class OussaStreamApp {
         this.db.ref('reviews').once('value', (snapshot) => {
             const allReviews = snapshot.val();
             if (!allReviews) return;
-
             const updates = {};
-
             Object.keys(allReviews).forEach(movieId => {
                 const movieReviews = allReviews[movieId];
                 Object.keys(movieReviews).forEach(reviewId => {
@@ -375,11 +339,8 @@ class OussaStreamApp {
                     }
                 });
             });
-
             if (Object.keys(updates).length > 0) {
-                this.db.ref().update(updates)
-                    .then(() => console.log("User reviews updated successfully"))
-                    .catch(err => console.error("Failed to sync reviews", err));
+                this.db.ref().update(updates).then(() => console.log("User reviews updated successfully")).catch(err => console.error("Failed to sync reviews", err));
             }
         });
     }
@@ -391,24 +352,16 @@ class OussaStreamApp {
     }
 
     // --- DATA HANDLING ---
-
     toggleMyList(id) {
         const index = this.myList.indexOf(id);
-        if (index > -1) {
-            this.myList.splice(index, 1);
-            this.showToast("Removed from My List");
-        } else {
-            this.myList.push(id);
-            this.showToast("Added to My List!");
-        }
+        if (index > -1) { this.myList.splice(index, 1); this.showToast("Removed from My List"); } 
+        else { this.myList.push(id); this.showToast("Added to My List!"); }
 
         if (this.user) {
-            this.db.ref('users/' + this.user.uid + '/myList').set(this.myList)
-                .catch(e => console.log("List save failed (permission)"));
+            this.db.ref('users/' + this.user.uid + '/myList').set(this.myList).catch(e => console.log("List save failed (permission)"));
         } else {
             localStorage.setItem('oussaStreamList', JSON.stringify(this.myList));
         }
-
         if (this.currentView === 'mylist') this.renderMyList();
         this.updateUI();
     }
@@ -419,25 +372,21 @@ class OussaStreamApp {
         else { this.progress[id] = { time, percent, lastUpdated: Date.now() }; }
 
         if (this.user) {
-            this.db.ref('users/' + this.user.uid + '/progress').set(this.progress)
-                .catch(e => console.log("Progress save failed (permission)"));
+            this.db.ref('users/' + this.user.uid + '/progress').set(this.progress).catch(e => console.log("Progress save failed (permission)"));
         } else {
             localStorage.setItem('oussaStreamProgress', JSON.stringify(this.progress));
         }
     }
 
     // --- REVIEWS SYSTEM ---
-
     updateReviewUI(isLoggedIn) {
         const inputContainer = document.getElementById('reviewInputContainer');
         const loginContainer = document.getElementById('loginToReview');
-
         if (isLoggedIn) {
             inputContainer.classList.remove('hidden');
             loginContainer.classList.add('hidden');
             const name = this.user.displayName || (this.user.email ? this.user.email.split('@')[0] : 'User');
             document.getElementById('userReviewName').textContent = name;
-
             const avatarDiv = document.getElementById('userReviewAvatar');
             if (this.avatar) {
                 avatarDiv.innerHTML = `<img src="${this.avatar}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;">`;
@@ -448,7 +397,6 @@ class OussaStreamApp {
                 avatarDiv.textContent = name.charAt(0).toUpperCase();
                 avatarDiv.style.background = 'var(--primary)';
             }
-
         } else {
             inputContainer.classList.add('hidden');
             loginContainer.classList.remove('hidden');
@@ -460,13 +408,8 @@ class OussaStreamApp {
         document.getElementById('ratingText').textContent = val + '/5';
         const stars = document.querySelectorAll('.star-input');
         stars.forEach(s => {
-            if (parseInt(s.dataset.value) <= val) {
-                s.classList.add('active', 'fas');
-                s.classList.remove('far');
-            } else {
-                s.classList.remove('active', 'fas');
-                s.classList.add('far');
-            }
+            if (parseInt(s.dataset.value) <= val) { s.classList.add('active', 'fas'); s.classList.remove('far'); } 
+            else { s.classList.remove('active', 'fas'); s.classList.add('far'); }
         });
     }
 
@@ -475,16 +418,10 @@ class OussaStreamApp {
         let hours = date.getHours();
         const minutes = date.getMinutes();
         const ampm = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12;
-        hours = hours ? hours : 12;
+        hours = hours % 12; hours = hours ? hours : 12; 
         const strMin = minutes < 10 ? '0' + minutes : minutes;
-
         const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const month = months[date.getMonth()];
-        const day = date.getDate();
-        const year = date.getFullYear();
-
-        return `${month} ${day}, ${year} • ${hours}:${strMin} ${ampm}`;
+        return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()} • ${hours}:${strMin} ${ampm}`;
     }
 
     fetchReviews(contentId) {
@@ -503,19 +440,14 @@ class OussaStreamApp {
             }
 
             this.activeReviews = Object.entries(data).map(([key, value]) => ({ id: key, ...value })).sort((a, b) => b.timestamp - a.timestamp);
-
             const total = this.activeReviews.reduce((sum, r) => sum + parseInt(r.rating), 0);
             const avg = (total / this.activeReviews.length).toFixed(1);
-
             document.getElementById('detailRating').innerHTML = `<i class="fas fa-star"></i> ${avg} (${this.activeReviews.length})`;
 
             reviewsContainer.innerHTML = this.activeReviews.map(r => {
                 let userAvatarHtml = '';
-                if (r.userAvatar) {
-                    userAvatarHtml = `<img src="${r.userAvatar}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;">`;
-                } else {
-                    userAvatarHtml = `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--primary); border-radius: 4px;">${r.userName.charAt(0).toUpperCase()}</div>`;
-                }
+                if (r.userAvatar) { userAvatarHtml = `<img src="${r.userAvatar}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;">`; } 
+                else { userAvatarHtml = `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--primary); border-radius: 4px;">${r.userName.charAt(0).toUpperCase()}</div>`; }
 
                 let actionsHtml = '';
                 if (this.user && r.userId === this.user.uid) {
@@ -526,21 +458,18 @@ class OussaStreamApp {
                         </div>
                     `;
                 }
-
+                const safeText = this.escapeHtml(r.text);
+                const safeUserName = this.escapeHtml(r.userName);
                 return `
                 <div class="review-card">
                     <div class="review-header">
                         <div class="d-flex align-items-center gap-2">
-                             <div class="review-avatar-small" style="width:24px; height:24px; font-size: 0.7rem; overflow: hidden; padding: 0; background: transparent;">
-                                ${userAvatarHtml}
-                             </div>
-                             <span class="fw-bold" style="font-size: 0.9rem;">${r.userName}</span>
+                             <div class="review-avatar-small" style="width:24px; height:24px; font-size: 0.7rem; overflow: hidden; padding: 0; background: transparent;">${userAvatarHtml}</div>
+                             <span class="fw-bold" style="font-size: 0.9rem;">${safeUserName}</span>
                         </div>
-                        <div class="review-stars">
-                            ${this.getStarsHtml(r.rating)}
-                        </div>
+                        <div class="review-stars">${this.getStarsHtml(r.rating)}</div>
                     </div>
-                    <p class="review-text mb-1">${r.text}</p>
+                    <p class="review-text mb-1">${safeText}</p>
                     <small class="review-date">${this.formatDate(r.timestamp)}</small>
                     ${actionsHtml}
                 </div>
@@ -550,10 +479,7 @@ class OussaStreamApp {
 
     getStarsHtml(rating) {
         let html = '';
-        for (let i = 1; i <= 5; i++) {
-            if (i <= rating) html += '<i class="fas fa-star"></i>';
-            else html += '<i class="far fa-star"></i>';
-        }
+        for (let i = 1; i <= 5; i++) { if (i <= rating) html += '<i class="fas fa-star"></i>'; else html += '<i class="far fa-star"></i>'; }
         return html;
     }
 
@@ -563,19 +489,12 @@ class OussaStreamApp {
 
         if (!this.editingReviewId) {
             const existingReview = this.activeReviews.find(r => r.userId === this.user.uid);
-            if (existingReview) {
-                this.showToast("You have already reviewed this title. Edit your existing review instead.");
-                return;
-            }
+            if (existingReview) { this.showToast("You have already reviewed this title. Edit your existing review instead."); return; }
         }
 
         const rating = document.getElementById('ratingValue').value;
         const text = document.getElementById('reviewText').value;
-
-        if (!rating) {
-            this.showToast("Please select a star rating.");
-            return;
-        }
+        if (!rating) { this.showToast("Please select a star rating."); return; }
 
         const reviewData = {
             userId: this.user.uid,
@@ -588,38 +507,26 @@ class OussaStreamApp {
 
         if (this.editingReviewId) {
             this.db.ref('reviews/' + this.activeContent.id + '/' + this.editingReviewId).update(reviewData)
-                .then(() => {
-                    this.showToast("Review Updated!");
-                    this.cancelEdit();
-                }).catch(err => {
-                    console.error(err);
-                    this.showToast("Failed to update. Check permissions.");
-                });
+                .then(() => { this.showToast("Review Updated!"); this.cancelEdit(); })
+                .catch(err => { console.error(err); this.showToast("Failed to update. Check permissions."); });
         } else {
             const newReviewRef = this.db.ref('reviews/' + this.activeContent.id).push();
-            newReviewRef.set(reviewData).then(() => {
-                this.showToast("Review Posted!");
-                this.cancelEdit();
-            }).catch(err => {
-                console.error(err);
-                this.showToast("Failed to post review. Check permissions.");
-            });
+            newReviewRef.set(reviewData).then(() => { this.showToast("Review Posted!"); this.cancelEdit(); })
+                .catch(err => { console.error(err); this.showToast("Failed to post review. Check permissions."); });
         }
     }
 
     editReview(reviewId) {
         const review = this.activeReviews.find(r => r.id === reviewId);
         if (!review) return;
-
         this.editingReviewId = reviewId;
         document.getElementById('reviewText').value = review.text;
         this.setRating(review.rating);
-
+        
         const submitBtn = document.querySelector('#reviewInputContainer button[type="submit"]');
         submitBtn.textContent = "Update Review";
-        submitBtn.classList.remove('btn-danger');
-        submitBtn.classList.add('btn-warning');
-
+        submitBtn.classList.remove('btn-danger'); submitBtn.classList.add('btn-warning'); 
+        
         let cancelBtn = document.getElementById('cancelEditBtn');
         if (!cancelBtn) {
             cancelBtn = document.createElement('button');
@@ -630,7 +537,6 @@ class OussaStreamApp {
             cancelBtn.onclick = () => this.cancelEdit();
             submitBtn.parentNode.appendChild(cancelBtn);
         }
-
         document.getElementById('reviewInputContainer').scrollIntoView({ behavior: 'smooth' });
     }
 
@@ -640,14 +546,10 @@ class OussaStreamApp {
         this.setRating(0);
         document.getElementById('ratingValue').value = '';
         document.getElementById('ratingText').textContent = 'Select rating';
-
+        
         const submitBtn = document.querySelector('#reviewInputContainer button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.textContent = "Post Review";
-            submitBtn.classList.add('btn-danger');
-            submitBtn.classList.remove('btn-warning');
-        }
-
+        if (submitBtn) { submitBtn.textContent = "Post Review"; submitBtn.classList.add('btn-danger'); submitBtn.classList.remove('btn-warning'); }
+        
         const cancelBtn = document.getElementById('cancelEditBtn');
         if (cancelBtn) cancelBtn.remove();
     }
@@ -655,12 +557,9 @@ class OussaStreamApp {
     deleteReview(reviewId) {
         if (!this.user || !this.activeContent) return;
         if (!confirm("Are you sure you want to delete this review?")) return;
-
+        
         this.db.ref('reviews/' + this.activeContent.id + '/' + reviewId).remove()
-            .then(() => {
-                this.showToast("Review Deleted");
-                if (this.editingReviewId === reviewId) this.cancelEdit();
-            })
+            .then(() => { this.showToast("Review Deleted"); if (this.editingReviewId === reviewId) this.cancelEdit(); })
             .catch(err => this.showToast(err.message));
     }
 
@@ -682,14 +581,14 @@ class OussaStreamApp {
             this.movies = data ? Object.keys(data).map(k => ({ id: k, type: 'movie', ...data[k] })) : [];
             this.populateYearFilter();
             if (this.currentView === 'movies') this.renderCatalog('movie');
-            this.updateUI();
+            this.updateUI(); 
         });
         this.db.ref('series').on('value', snap => {
             const data = snap.val();
             this.series = data ? Object.keys(data).map(k => ({ id: k, type: 'series', ...data[k] })) : [];
             this.populateYearFilter();
             if (this.currentView === 'series') this.renderCatalog('series');
-            this.updateUI();
+            this.updateUI(); 
         });
     }
 
@@ -729,85 +628,57 @@ class OussaStreamApp {
         document.getElementById('searchInput').value = '';
     }
 
-    // --- HELPER: AUTO ROTATION & FULLSCREEN (UPDATED) ---
+    // --- HELPER: AUTO ROTATION & FULLSCREEN ---
     async enterFullscreenAndRotate() {
         const playerPage = document.getElementById('playerPage');
         if (!playerPage) return;
 
         try {
-            // 1. Request Fullscreen FIRST and wait for it
-            if (playerPage.requestFullscreen) {
-                await playerPage.requestFullscreen();
-            } else if (playerPage.webkitRequestFullscreen) {
-                await playerPage.webkitRequestFullscreen();
-            } else if (playerPage.msRequestFullscreen) {
-                await playerPage.msRequestFullscreen();
-            }
+            if (playerPage.requestFullscreen) { await playerPage.requestFullscreen(); } 
+            else if (playerPage.webkitRequestFullscreen) { await playerPage.webkitRequestFullscreen(); } 
+            else if (playerPage.msRequestFullscreen) { await playerPage.msRequestFullscreen(); }
 
-            // 2. Lock Orientation (Only works if fullscreen is active)
             if (screen.orientation && screen.orientation.lock) {
-                // Add a small delay to ensure the browser registers the fullscreen state
                 setTimeout(async () => {
-                    try {
-                        await screen.orientation.lock('landscape');
-                        console.log("Orientation locked to landscape");
-                    } catch (err) {
-                        console.log("Orientation lock failed (likely browser restriction):", err);
-                    }
+                    try { await screen.orientation.lock('landscape'); console.log("Orientation locked"); } 
+                    catch (err) { console.log("Orientation lock failed:", err); }
                 }, 200);
             }
-        } catch (err) {
-            console.log("Fullscreen request failed:", err);
-        }
+        } catch (err) { console.log("Fullscreen failed:", err); }
     }
 
     exitFullscreenAndRotate() {
-        // 1. Unlock Orientation
-        if (screen.orientation && screen.orientation.unlock) {
-            screen.orientation.unlock();
-        }
-
-        // 2. Exit Fullscreen
-        if (document.exitFullscreen) {
-            document.exitFullscreen().catch(err => console.log(err));
-        } else if (document.webkitExitFullscreen) {
-            document.webkitExitFullscreen();
-        }
+        if (screen.orientation && screen.orientation.unlock) { screen.orientation.unlock(); }
+        if (document.exitFullscreen) { document.exitFullscreen().catch(err => console.log(err)); } 
+        else if (document.webkitExitFullscreen) { document.webkitExitFullscreen(); }
     }
 
     setupFullscreenListener() {
-        // Listener to detect if user exits fullscreen manually (e.g., via back button)
         document.addEventListener('fullscreenchange', () => {
             if (!document.fullscreenElement && this.currentView === 'player') {
-                // User exited fullscreen but didn't close the player manually
-                // We might want to unlock orientation here
-                if (screen.orientation && screen.orientation.unlock) {
-                    screen.orientation.unlock();
-                }
+                if (screen.orientation && screen.orientation.unlock) { screen.orientation.unlock(); }
             }
         });
     }
 
-    // --- CRITICAL FIX: STOP VIDEO WHEN SWITCHING VIEWS ---
+    // --- CRITICAL FIX: STOP VIDEO & RESET ---
     switchView(id) {
         document.body.style.overflow = 'auto';
 
-        if (this.player) {
-            try { this.player.stop(); } catch (e) { }
-        }
-
+        if (this.player) { try { this.player.stop(); } catch (e) {} }
+        
+        // STOP ALL IFRAMES (Important for Ads & Playback)
         const iframes = document.querySelectorAll('iframe');
         iframes.forEach(iframe => {
             if (iframe.id === 'embedPlayer' || iframe.closest('.player-page') || iframe.closest('.video-container') || iframe.closest('#videoModal')) {
-                iframe.src = '';
+                iframe.src = ''; 
             }
         });
 
-        this.stopPlayerUiTimer();
+        this.stopPlayerUiTimer(); 
         const playerPage = document.getElementById('playerPage');
         if (playerPage) {
-            playerPage.classList.remove('player-ui-hidden');
-
+            playerPage.classList.remove('player-ui-hidden'); 
             if (id !== 'playerPage') {
                 playerPage.onmousemove = null;
                 playerPage.ontouchstart = null;
@@ -819,295 +690,37 @@ class OussaStreamApp {
             const el = document.getElementById(p);
             if (el) el.classList.toggle('hidden', p !== id);
         });
-
+        
         window.scrollTo(0, 0);
     }
 
-    renderCatalog(typeFilter) {
-        const container = document.getElementById('catalogGrid');
-        if (!container) return;
-        let data = typeFilter === 'movie' ? this.movies : this.series;
-
-        const query = document.getElementById('searchInput').value.toLowerCase();
-        if (query) data = data.filter(i => i.title.toLowerCase().includes(query));
-
-        if (this.activeFilters.genre !== 'all') {
-            data = data.filter(item => {
-                const itemGenre = (item.genre || item.type || "").toLowerCase();
-                return itemGenre.includes(this.activeFilters.genre.toLowerCase());
-            });
-        }
-
-        if (this.activeFilters.year !== 'all') { data = data.filter(item => item.year == this.activeFilters.year); }
-
-        data.sort((a, b) => {
-            if (this.activeFilters.sort === 'newest') return (b.year || 0) - (a.year || 0);
-            if (this.activeFilters.sort === 'oldest') return (a.year || 0) - (b.year || 0);
-            if (this.activeFilters.sort === 'rating') return (b.rating || 0) - (a.rating || 0);
-            return 0;
-        });
-
-        if (data.length === 0) { container.innerHTML = '<div class="col-12 text-center mt-5 text-muted"><h3>No results found.</h3></div>'; document.getElementById('paginationControls').innerHTML = ''; return; }
-
-        const totalItems = data.length;
-        const totalPages = Math.ceil(totalItems / this.itemsPerPage);
-        if (this.currentPage > totalPages) this.currentPage = 1;
-
-        const start = (this.currentPage - 1) * this.itemsPerPage;
-        const end = start + this.itemsPerPage;
-        const paginatedItems = data.slice(start, end);
-
-        container.innerHTML = paginatedItems.map(i => this.createCard(i)).join('');
-        this.renderPaginationControls(totalPages);
-    }
-
-    renderPaginationControls(totalPages) {
-        const controls = document.getElementById('paginationControls');
-        if (totalPages <= 1) { controls.innerHTML = ''; return; }
-        controls.innerHTML = `<button class="page-btn" onclick="app.changePage(-1)" ${this.currentPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i> Prev</button><span class="page-info">Page ${this.currentPage} of ${totalPages}</span><button class="page-btn" onclick="app.changePage(1)" ${this.currentPage === totalPages ? 'disabled' : ''}>Next <i class="fas fa-chevron-right"></i></button>`;
-    }
-
-    changePage(direction) { this.currentPage += direction; this.renderCatalog(this.currentCatalogType); window.scrollTo(0, 0); }
-
-    filterByGenre(genre) {
-        this.currentView = 'movies';
-        this.currentPage = 1;
-        this.currentCatalogType = 'movie';
-        this.resetFiltersUI();
-        this.activeFilters.genre = genre;
-        document.getElementById('genreSelect').value = genre;
-        document.getElementById('pageTitle').textContent = `${genre}`;
-        this.switchView('catalogPage');
-        this.renderCatalog('movie');
-    }
-
-    createCard(item, isContinue = false) {
-        const inList = this.myList.includes(item.id);
-        const heartClass = inList ? 'fas fa-heart active-heart' : 'far fa-heart';
-        const prog = this.progress[item.id];
-        return `<div class="content-card" onclick="app.openDetails('${item.id}')">${item.type === 'series' ? '<span class="badge-series">Series</span>' : ''}<img src="${item.poster}" alt="${item.title}" class="card-img" loading="lazy">${isContinue && prog ? `<div class="progress-container"><div class="progress-bar" style="width: ${prog.percent}%"></div></div>` : ''}<div class="card-overlay"><h5 class="card-title">${item.title}</h5><div class="card-buttons"><button class="play-btn"><i class="fas fa-play"></i> ${isContinue ? 'Resume' : 'Info'}</button><button class="list-btn" onclick="event.stopPropagation(); app.toggleMyList('${item.id}')"><i class="${heartClass}"></i></button></div></div></div>`;
-    }
-
-    openDetails(id, fromHistory = false) {
-        const all = [...this.movies, ...this.series];
-        const item = all.find(x => x.id === id);
-        if (!item) return;
-        this.activeContent = item;
-        this.currentView = 'details';
-        if (!fromHistory) this.updateURL('details', id);
-
-        const hero = document.getElementById('detailHero');
-        const bgImage = item.backdrop || item.poster;
-        hero.style.backgroundImage = `url('${bgImage}')`;
-
-        document.getElementById('detailPoster').src = item.poster;
-        document.getElementById('detailTitle').textContent = item.title;
-        document.getElementById('detailDesc').textContent = item.description || "No description available.";
-        document.getElementById('detailYear').textContent = item.year || "N/A";
-        document.getElementById('detailRating').innerHTML = `<i class="fas fa-star"></i> ${item.rating || "N/A"}`;
-        document.getElementById('detailGenre').textContent = item.genre || item.type.toUpperCase();
-
-        const playBtn = document.getElementById('detailPlayBtn');
-        const listBtn = document.getElementById('detailListBtn');
-
-        playBtn.onclick = () => this.playActiveMovie();
-        this.updateDetailListBtn(item.id);
-        listBtn.onclick = () => { this.toggleMyList(item.id); this.updateDetailListBtn(item.id); };
-
-        this.cancelEdit();
-        this.fetchReviews(id);
-        this.updateReviewUI(!!this.user);
-
-        this.renderRelated(item.type, item.id, 'detailRelatedGrid');
-
-        this.switchView('detailsPage');
-    }
-
-    updateDetailListBtn(id) { const btn = document.getElementById('detailListBtn'); if (this.myList.includes(id)) { btn.innerHTML = '<i class="fas fa-check"></i> Added'; btn.classList.add('btn-light'); btn.classList.remove('btn-outline-light'); } else { btn.innerHTML = '<i class="far fa-heart"></i> My List'; btn.classList.add('btn-outline-light'); btn.classList.remove('btn-light'); } }
-
-    // --- PLAYER UI LOGIC (AUTO-HIDE) ---
-    setupPlayerUI() {
-        const playerPage = document.getElementById('playerPage');
-        if (!playerPage) return;
-
-        const showUI = () => {
-            playerPage.classList.remove('player-ui-hidden');
-            this.resetPlayerUiTimer();
-        };
-
-        playerPage.onmousemove = showUI;
-        playerPage.ontouchstart = showUI;
-        playerPage.onclick = showUI;
-
-        this.resetPlayerUiTimer();
-    }
-
-    resetPlayerUiTimer() {
-        this.stopPlayerUiTimer();
-        this.playerUiTimeout = setTimeout(() => {
-            const playerPage = document.getElementById('playerPage');
-            if (playerPage && this.currentView === 'player') {
-                playerPage.classList.add('player-ui-hidden');
-            }
-        }, 3000);
-    }
-
-    stopPlayerUiTimer() {
-        if (this.playerUiTimeout) {
-            clearTimeout(this.playerUiTimeout);
-            this.playerUiTimeout = null;
-        }
-    }
-
-    playActiveMovie() {
-        if (!this.activeContent) return;
-        const item = this.activeContent;
-        const controls = document.getElementById('seriesControls');
-        const playerTitle = document.getElementById('playerTitle');
-
-        this.switchView('playerPage');
-        this.currentView = 'player';
-
-        this.setupPlayerUI();
-
-        // TRIGGER AUTO-ROTATION ON MOBILE
-        if (window.innerWidth < 768) {
-            this.enterFullscreenAndRotate();
-        }
-
-        if (playerTitle) playerTitle.textContent = `Now Watching: ${item.title}`;
-
-        if (item.type === 'series' || (item.seasons && item.seasons.length > 0)) {
-            controls.classList.remove('hidden');
-            const sSelect = document.getElementById('seasonSelect');
-
-            if (item.seasons && item.seasons.length > 0) {
-                sSelect.innerHTML = item.seasons.map(s => `<option value="${s.seasonNumber || 1}">Season ${s.seasonNumber || 1}</option>`).join('');
-                this.onSeasonChange();
-            } else {
-                controls.classList.add('hidden');
-                if (item.videoUrl) this.setPlayerSource(item.videoUrl);
-            }
-        } else {
-            controls.classList.add('hidden');
-            this.setPlayerSource(item.videoUrl);
-        }
-
-        const prog = this.progress[item.id];
-        if (prog && this.player) { this.player.once('ready', () => { this.player.currentTime = prog.time; }); }
-    }
-
-    renderNewContent() { const container = document.getElementById('newContentGrid'); if (!container) return; const all = [...this.movies, ...this.series].sort((a, b) => b.year - a.year).slice(0, 6); container.innerHTML = all.map(i => this.createCard(i)).join(''); }
-
-    renderHeroCarousel() {
-        const indicators = document.getElementById('heroIndicators');
-        const slides = document.getElementById('heroSlides');
-        if (!indicators || !slides) return;
-
-        const allItems = [...this.movies, ...this.series].sort((a, b) => b.year - a.year).slice(0, 5);
-        if (allItems.length === 0) return;
-
-        indicators.innerHTML = '';
-        slides.innerHTML = '';
-
-        allItems.forEach((item, index) => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.dataset.bsTarget = '#heroCarousel';
-            btn.dataset.bsSlideTo = index;
-            btn.className = index === 0 ? 'active' : '';
-            btn.ariaCurrent = index === 0 ? 'true' : 'false';
-            btn.ariaLabel = `Slide ${index + 1}`;
-            indicators.appendChild(btn);
-
-            const slide = document.createElement('div');
-            slide.className = `carousel-item ${index === 0 ? 'active' : ''}`;
-            const bgImage = item.backdrop || item.poster;
-
-            slide.innerHTML = `
-                <img src="${bgImage}" class="hero-bg-img" alt="${item.title}">
-                <div class="hero-overlay"></div>
-                <div class="container">
-                    <div class="hero-content-wrapper">
-                        <h1 class="hero-title">${item.title}</h1>
-                        <p class="hero-desc">${item.description || 'No description available.'}</p>
-                        <div class="hero-buttons">
-                            <button class="hero-btn hero-btn-play" onclick="app.openDetails('${item.id}')">
-                                <i class="fas fa-play"></i> Watch Now
-                            </button>
-                            <button class="hero-btn hero-btn-list" onclick="app.toggleMyList('${item.id}')">
-                                <i class="fas fa-plus"></i> My List
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            slides.appendChild(slide);
-        });
-    }
-
-    renderContinueWatching() {
-        const container = document.getElementById('continueGrid');
-        const section = document.getElementById('continueWatchingSection');
-        if (!container || !section) return;
-        const all = [...this.movies, ...this.series];
-        const progressIds = Object.keys(this.progress).sort((a, b) => this.progress[b].lastUpdated - this.progress[a].lastUpdated);
-        const list = progressIds.map(id => all.find(item => item.id === id)).filter(Boolean);
-        if (list.length > 0) { section.classList.remove('hidden'); container.innerHTML = list.map(i => this.createCard(i, true)).join(''); } else { section.classList.add('hidden'); }
-    }
-
-    renderMyList() { const container = document.getElementById('myListGrid'); if (!container) return; const all = [...this.movies, ...this.series]; const listItems = all.filter(item => this.myList.includes(item.id)); container.innerHTML = listItems.length > 0 ? listItems.map(i => this.createCard(i)).join('') : '<p class="text-center w-100 mt-5 text-gray-small">List is empty.</p>'; }
-
-    renderRelated(genre, currentId, containerId = 'relatedGrid') { const container = document.getElementById(containerId); if (!container) return; const all = [...this.movies, ...this.series]; const related = all.filter(item => item.id !== currentId && item.type.toLowerCase() === genre.toLowerCase()).slice(0, 4); container.innerHTML = related.map(i => this.createCard(i)).join(''); }
-
-    renderCast() {
-        const castContainer = document.getElementById('detailCast');
-        const fakeCast = [{ name: "Actor One", img: "https://i.pravatar.cc/150?img=1" }, { name: "Actress Two", img: "https://i.pravatar.cc/150?img=5" }, { name: "Star Three", img: "https://i.pravatar.cc/150?img=8" }, { name: "Co-Star Four", img: "https://i.pravatar.cc/150?img=12" }];
-        castContainer.innerHTML = fakeCast.map(actor => `<div class="cast-member"><img src="${actor.img}" class="cast-avatar"><div class="small text-muted" style="font-size: 0.8rem">${actor.name}</div></div>`).join('');
-    }
-
-    handlePopState(event) { if (event.state) { const view = event.state.view; if (view === 'details' && event.state.id) { this.openDetails(event.state.id, true); } else if (view === 'movies') { this.showMovies(true); } else if (view === 'series') { this.showSeries(true); } else if (view === 'mylist') { this.showMyList(true); } else { this.showHome(true); } } else { this.showHome(true); } }
-
-    updateURL(view, id = null) { let url = `?view=${view}`; if (id) url += `&id=${id}`; const state = { view, id }; history.pushState(state, '', url); }
-
-    goBack() {
-        if (this.currentView === 'player') {
-            this.closePlayer();
-        } else {
-            history.back();
-        }
-    }
-
-    showToast(msg) { const container = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = 'custom-toast'; toast.textContent = msg; container.appendChild(toast); setTimeout(() => toast.remove(), 3500); }
-
-    handleNavbarScroll() { const nav = document.getElementById('mainNavbar'); window.onscroll = () => nav.classList.toggle('scrolled', window.scrollY > 80); }
-
-    setupSearch() { const input = document.getElementById('searchInput'); if (input) input.addEventListener('input', () => { if (this.currentView !== 'movies' && this.currentView !== 'series') { this.showMovies(); } if (this.currentCatalogType === 'movie') this.renderCatalog('movie'); else if (this.currentCatalogType === 'series') this.renderCatalog('series'); }); }
-
-    // UPDATED: Robust Video Handler using specific selectors to avoid ID conflicts
+    // --- ROBUST PLAYER HANDLER (With Sandbox Adblock) ---
     setPlayerSource(url) {
         // Target specifically the iframe inside the Player Page
-        const embedPlayer = document.querySelector('#playerPage iframe');
+        const embedPlayer = document.querySelector('#playerPage iframe'); 
         const plyrContainer = document.querySelector('#playerPage .plyr');
         const rawVideo = document.getElementById('player'); // raw plyr video
 
-        if (!url) {
-            this.showToast("Error: Video link missing");
-            return;
-        }
+        if (!url) { this.showToast("Error: Video link missing"); return; }
 
         const isEmbed = url.includes('/e/') || url.includes('myvidplay') || url.includes('dood') || url.includes('pixel');
 
         if (isEmbed) {
-            // --- CASE 1: EMBED ---
+            // --- CASE 1: EMBED (Streamtape/Doodstream) ---
             if (this.player) this.player.stop();
-
+            
             if (plyrContainer) plyrContainer.style.display = 'none';
-            if (rawVideo) rawVideo.style.display = 'none';
+            if (rawVideo) rawVideo.style.display = 'none'; 
 
             if (embedPlayer) {
                 embedPlayer.classList.remove('hidden');
                 embedPlayer.style.display = 'block';
+                
+                // ADBLOCKER SANDBOX LOGIC
+                // This attribute blocks popups but allows the video to play.
+                // NOTE: Some providers might detect this. If video fails, remove 'sandbox' attribute.
+                embedPlayer.setAttribute('sandbox', 'allow-forms allow-scripts allow-same-origin allow-presentation');
+                
                 embedPlayer.src = url;
             }
         } else {
@@ -1116,6 +729,7 @@ class OussaStreamApp {
                 embedPlayer.classList.add('hidden');
                 embedPlayer.style.display = 'none';
                 embedPlayer.src = '';
+                embedPlayer.removeAttribute('sandbox'); // Clear sandbox for future use
             }
 
             if (plyrContainer) plyrContainer.style.display = 'block';
@@ -1133,11 +747,8 @@ class OussaStreamApp {
     onSeasonChange() {
         const sNum = parseInt(document.getElementById('seasonSelect').value);
         const eSelect = document.getElementById('episodeSelect');
-
         if (!this.activeContent.seasons) return;
-
         const season = this.activeContent.seasons.find(s => (s.seasonNumber || 1) === sNum);
-
         if (season) {
             eSelect.innerHTML = season.episodes.map(e => `<option value="${e.videoUrl}">E${e.episodeNumber}: ${e.title}</option>`).join('');
         }
@@ -1145,19 +756,13 @@ class OussaStreamApp {
 
     playEpisode() { const url = document.getElementById('episodeSelect').value; if (url) this.setPlayerSource(url); }
 
-    // UPDATED: Explicit Close Player
     closePlayer() {
-        // Stop Plyr
         if (this.player) this.player.stop();
-
-        // Stop Iframe
         const embedPlayer = document.querySelector('#playerPage iframe');
-        if (embedPlayer) embedPlayer.src = '';
-
-        // EXIT FULLSCREEN/ROTATION
+        if (embedPlayer) embedPlayer.src = ''; 
+        
         this.exitFullscreenAndRotate();
-
-        this.stopPlayerUiTimer(); // Reset UI timer
+        this.stopPlayerUiTimer(); 
         document.body.style.overflow = 'auto';
 
         if (this.activeContent) {
@@ -1170,7 +775,7 @@ class OussaStreamApp {
 
     updateUI() {
         this.renderNewContent();
-        this.renderHeroCarousel();
+        this.renderHeroCarousel(); 
     }
 }
 
