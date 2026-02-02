@@ -32,7 +32,8 @@ class OussaStreamApp {
         this.player = null;
         
         this.playerUiTimeout = null;
-        this.dataLoaded = { movies: false, series: false }; // Track loading state
+        this.dataLoaded = { movies: false, series: false };
+        this.initialLoadComplete = false;
 
         this.itemsPerPage = 8;
         this.currentPage = 1;
@@ -55,12 +56,10 @@ class OussaStreamApp {
         this.setupFilters();
         this.setupFullscreenListener();
         
-        // Remove simple timeout, now handled by data loading
         setTimeout(() => {
             const loader = document.getElementById('loadingOverlay');
-            // Only hide if we haven't navigated elsewhere
             if (loader && this.currentView === 'home') loader.classList.add('hidden');
-        }, 2000); // Increased slightly to allow data fetch
+        }, 2000);
     }
 
     // --- SECURITY HELPER ---
@@ -140,7 +139,6 @@ class OussaStreamApp {
         });
     }
 
-    // ... (Auth Modals & Profile Logic remains same) ...
     openAuthModal() { this.isResetMode = false; this.updateAuthModalUI(); document.getElementById('authModal').classList.add('show'); }
     closeAuthModal() { document.getElementById('authModal').classList.remove('show'); }
     toggleAuthMode() { this.isLoginMode = !this.isLoginMode; this.updateAuthModalUI(); }
@@ -370,10 +368,7 @@ class OussaStreamApp {
 
     // --- REFRESH PERSISTENCE LOGIC ---
     checkUrlParams() {
-        // Only run this if both data sets are loaded AND we haven't already restored the session
         if (!this.dataLoaded.movies || !this.dataLoaded.series) return;
-        
-        // Prevent running multiple times if user is navigating naturally
         if (this.initialLoadComplete) return;
         this.initialLoadComplete = true;
 
@@ -387,9 +382,8 @@ class OussaStreamApp {
         if (view === 'details' && id) {
             this.openDetails(id, true);
         } else if (view === 'player' && id) {
-            // Restore player view
-            this.openDetails(id, true); // Load details context first
-            setTimeout(() => this.playActiveMovie(), 500); // Then open player
+            this.openDetails(id, true); 
+            setTimeout(() => this.playActiveMovie(), 500); 
         } else if (view === 'movies') {
             this.showMovies(true);
         } else if (view === 'series') {
@@ -397,7 +391,7 @@ class OussaStreamApp {
         } else if (view === 'mylist') {
             this.showMyList(true);
         } else {
-            this.renderContinueWatching(); // Default Home
+            this.renderContinueWatching(); 
         }
     }
 
@@ -460,14 +454,12 @@ class OussaStreamApp {
         if (event.state) {
             const view = event.state.view;
             if (view === 'player') {
-                // If we popped back INTO player state (forward button), play
                 if (event.state.id) {
                     this.openDetails(event.state.id, true);
-                    this.playActiveMovie(true); // pass true to indicate from history
+                    this.playActiveMovie(true); 
                 }
             } else if (view === 'details' && event.state.id) {
-                // If we popped back to details (e.g. from player)
-                this.closePlayer(true); // Close player cleanly without pushing new state
+                this.closePlayer(true); 
                 this.openDetails(event.state.id, true);
             } else if (view === 'movies') { this.showMovies(true); } 
             else if (view === 'series') { this.showSeries(true); } 
@@ -492,7 +484,6 @@ class OussaStreamApp {
         if (this.currentView === 'player') {
             this.closePlayer();
         } else {
-            // Standard back behavior
             history.back();
         }
     }
@@ -538,7 +529,6 @@ class OussaStreamApp {
         if (!this.activeContent) return;
         const item = this.activeContent;
         
-        // PUSH PLAYER STATE TO HISTORY if not coming from back/forward button
         if (!fromHistory) {
             this.updateURL('player', item.id);
         }
@@ -572,11 +562,9 @@ class OussaStreamApp {
 
         if (this.activeContent) {
             this.currentView = 'details';
-            // If user clicked 'Back' button on UI, go back in history to remove 'player' state
             if (!fromHistory) {
-                history.back(); // This will trigger handlePopState which handles the UI switch
+                history.back(); 
             } else {
-                // If triggered by browser back button, just switch UI
                 this.switchView('detailsPage');
             }
         } else {
