@@ -3,7 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>OussaStream</title>
     <link rel="icon" type="image/png" href="https://i.ibb.co/MD3HFP46/Untitled-Design-1-Edited-Edited.png">
 
@@ -20,14 +21,16 @@
     <link rel="stylesheet" href="style.css">
     <!-- Prevent browsers from guessing content type (sniffing) -->
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
-
-    <!-- Referrer Policy: Don't leak full URL to external sites -->
     <meta name="referrer" content="origin-when-cross-origin">
+
+    <!-- PWA Helper for Fullscreen -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 </head>
 
 <body>
-    <!-- NEW LOADING OVERLAY (Modern Glowing Logo) -->
+    <!-- LOADING OVERLAY -->
     <div class="loading-overlay" id="loadingOverlay">
         <div class="logo-container">
             <img src="https://i.ibb.co/MD3HFP46/Untitled-Design-1-Edited-Edited.png" alt="OussaStream">
@@ -74,7 +77,6 @@
 
     <!-- Main Content -->
     <main id="mainContent">
-
         <!-- HERO CAROUSEL -->
         <div id="heroCarousel" class="carousel slide carousel-fade hero-carousel" data-bs-ride="carousel"
             data-bs-pause="hover">
@@ -113,6 +115,7 @@
             </div>
         </section>
 
+        <!-- Collections Section (Hidden on Mobile via CSS) -->
         <section class="section" id="collectionsSection">
             <div class="container">
                 <h2 class="section-title">Popular Genres</h2>
@@ -137,8 +140,6 @@
     <!-- Catalog Page -->
     <div id="catalogPage" class="hidden">
         <div class="container page-padding">
-
-            <!-- Header & Search Row -->
             <div
                 class="catalog-header d-flex flex-column flex-md-row justify-content-between align-items-center mb-5 gap-3">
                 <h2 class="section-title mb-0" id="pageTitle"
@@ -245,13 +246,12 @@
             </div>
         </div>
 
-        <!-- REVIEWS & RELATED (RESTORED) -->
+        <!-- REVIEWS & RELATED -->
         <div class="container section pt-0 related-section">
             <div class="row">
                 <div class="col-md-8">
                     <h3 class="section-title">Reviews & Ratings</h3>
 
-                    <!-- Write Review Box -->
                     <div id="reviewInputContainer" class="review-box mb-4">
                         <div class="d-flex align-items-center gap-3 mb-3">
                             <div class="review-avatar-small" id="userReviewAvatar">U</div>
@@ -277,7 +277,6 @@
                         <button class="btn btn-outline-light btn-sm" onclick="app.openAuthModal()">Sign In</button>
                     </div>
 
-                    <!-- Reviews List -->
                     <div id="reviewsList" class="reviews-list"></div>
                 </div>
 
@@ -293,7 +292,7 @@
     <div id="playerPage" class="player-page hidden">
         <div class="player-header">
             <button class="player-back-btn" onclick="app.closePlayer()">
-                <i class="fas fa-arrow-left"></i> <span class="d-none d-md-inline">Back to Details</span>
+                <i class="fas fa-arrow-left"></i> <span class="d-none d-md-inline">Back</span>
             </button>
             <h3 id="playerTitle" class="player-title">Now Watching</h3>
         </div>
@@ -303,6 +302,14 @@
                 <video id="player" playsinline controls></video>
                 <iframe id="embedPlayer" class="hidden" frameborder="0" allowfullscreen></iframe>
             </div>
+        </div>
+
+        <!-- Next Episode Overlay -->
+        <div id="nextEpOverlay" class="next-ep-overlay">
+            <button id="nextEpBtn" class="next-ep-btn">
+                <span class="next-label">Next Episode</span>
+                <i class="fas fa-forward"></i>
+            </button>
         </div>
 
         <div id="seriesControls" class="series-controls hidden">
@@ -423,7 +430,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
-    <!-- Bootstrap JS (REQUIRED FOR CAROUSEL) -->
+    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Plyr JS -->
