@@ -1,4 +1,6 @@
-// 1. Firebase Configuration
+// ==========================================
+// 1. FIREBASE CONFIGURATION
+// ==========================================
 const firebaseConfig = {
     apiKey: "AIzaSyAMxFcc8nt3RgsodtGBUw-jYEZu6Ui4NIA",
     authDomain: "oussastream.firebaseapp.com",
@@ -9,96 +11,136 @@ const firebaseConfig = {
     appId: "1:12799093969:web:fc044c5c7b3c78a1e3e9f0"
 };
 
-// Initialize Firebase
+// Initialize Firebase only if not already initialized
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 
+// ==========================================
+// 2. MAIN APPLICATION CLASS
+// ==========================================
 class OussaStreamApp {
     constructor() {
+        // Firebase References
         this.db = firebase.database();
         this.auth = firebase.auth();
+
+        // User State
         this.user = null;
         this.avatar = null;
         this.tempAvatarData = null;
 
+        // Content Data
         this.movies = [];
         this.series = [];
-        this.myList = [];
-        this.progress = {}; // Current user progress
 
+        // User Specific Data (Favorites & Progress)
+        this.myList = [];
+        this.progress = {};
+
+        // Performance Throttling
+        this.lastSaveTime = 0;
+
+        // Review System State
         this.activeReviews = [];
         this.editingReviewId = null;
 
+        // Navigation State
         this.currentView = 'home';
         this.activeContent = null;
+
+        // Player State
         this.player = null;
-
         this.playerUiTimeout = null;
+        this.nextEpisodeTimer = null;
 
-        this.itemsPerPage = 8;
+        // Pagination & Filters
+        this.itemsPerPage = 12; // Increased for better desktop view
         this.currentPage = 1;
         this.currentCatalogType = 'all';
-        this.activeFilters = { genre: 'all', year: 'all', sort: 'newest' };
+        this.activeFilters = {
+            genre: 'all',
+            year: 'all',
+            sort: 'newest'
+        };
 
+        // Auth Modal State
         this.isLoginMode = true;
         this.isResetMode = false;
 
-        // Next Episode Logic
-        this.nextEpisodeTimer = null;
-        this.nextEpisodeData = null;
-
+        // Bind History Event
         window.onpopstate = (event) => this.handlePopState(event);
+
+        // Start App
         this.init();
     }
 
+    /**
+     * Initialize the application
+     */
     init() {
-        this.initAuth(); // Auth listener handles data loading
+        console.log("Initializing OussaStream...");
+
+        this.initAuth();
         this.initPlayer();
-        this.fetchData(); // Fetch Movies/Series catalog
+        this.fetchData();
+
         this.handleNavbarScroll();
         this.setupSearch();
         this.setupFilters();
         this.setupFullscreenListener();
 
-        // Persistence: Handle Refresh
+        // Handle URL parameters for direct linking (Persistence)
         this.handleInitialRouting();
 
+        // Hide loading screen after a short delay
         setTimeout(() => {
             const loader = document.getElementById('loadingOverlay');
-            if (loader) loader.classList.add('hidden');
+            if (loader) {
+                loader.classList.add('hidden');
+            }
         }, 1500);
     }
 
-    // --- ROUTING & PERSISTENCE ---
+    // ==========================================
+    // 3. ROUTING & STATE PERSISTENCE
+    // ==========================================
+
+    /**
+     * Save current app state to localStorage to survive page refreshes
+     */
     saveAppState() {
         const state = {
             view: this.currentView,
             id: this.activeContent ? this.activeContent.id : null
         };
-        // Use sessionStorage to keep state during refresh in same tab
-        sessionStorage.setItem('oussaStreamLastState', JSON.stringify(state));
+        localStorage.setItem('oussaStreamLastState', JSON.stringify(state));
     }
 
+    /**
+     * Handle routing based on URL params or saved state
+     */
     handleInitialRouting() {
         const params = new URLSearchParams(window.location.search);
         let view = params.get('view');
         let id = params.get('id');
 
-        // Check SessionStorage if URL is empty (Persistence on Refresh)
+        // If no URL params, check local storage (Resume user session)
         if (!view) {
-            const savedState = JSON.parse(sessionStorage.getItem('oussaStreamLastState'));
+            const savedState = JSON.parse(localStorage.getItem('oussaStreamLastState'));
             if (savedState) {
                 view = savedState.view;
                 id = savedState.id;
             }
         }
 
+        // Route to specific view
         if (view) {
             if (view === 'details' && id) {
-                // Wait a bit for data to load
+                // Wait for data fetch
                 setTimeout(() => this.openDetails(id, true), 1000);
             } else if (view === 'player' && id) {
+                // Safety: Go to details first, user can click play again
                 setTimeout(() => this.openDetails(id, true), 1000);
             } else if (view === 'movies') {
                 this.showMovies(true);
@@ -110,52 +152,119 @@ class OussaStreamApp {
         }
     }
 
-    // --- SECURITY HELPER ---
-    escapeHtml(text) {
-        if (!text) return text;
-        return text
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+    /**
+     * Handle Browser Back/Forward buttons
+     */
+    handlePopState(event) {
+        if (event.state) {
+            const view = event.state.view;
+            if (view === 'details' && event.state.id) {
+                this.openDetails(event.state.id, true);
+            } else if (view === 'movies') {
+                this.showMovies(true);
+            } else if (view === 'series') {
+                this.showSeries(true);
+            } else if (view === 'mylist') {
+                this.showMyList(true);
+            } else {
+                this.showHome(true);
+            }
+        } else {
+            this.showHome(true);
+        }
     }
 
-    // --- AUTHENTICATION & DATA ISOLATION ---
+    /**
+     * Update URL without reloading page
+     */
+    updateURL(view, id = null) {
+        let url = `?view=${view}`;
+        if (id) url += `&id=${id}`;
+
+        const state = { view, id };
+        history.pushState(state, '', url);
+        this.saveAppState();
+    }
+
+    // ==========================================
+    // 4. AUTHENTICATION & DATA ISOLATION logic
+    // ==========================================
+
+    /**
+     * Initialize Auth Listener (Firebase)
+     * Handles switching between Guest Mode (localStorage) and User Mode (Firebase)
+     */
     initAuth() {
         this.auth.onAuthStateChanged((user) => {
             if (user) {
-                // LOGGED IN
+                // --- LOGGED IN MODE ---
+                console.log("User Logged In:", user.uid);
                 this.user = user;
-                this.myList = []; // Clear guest data
-                this.progress = {}; // Clear guest data
+
+                // Clear any guest data from memory to avoid mixing
+                this.myList = [];
+                this.progress = {};
 
                 this.updateAuthUI(true);
-                this.loadUserData(user.uid); // Load strictly from Firebase
+                this.loadUserData(user.uid); // Load specific user data
                 this.updateReviewUI(true);
 
                 const name = user.displayName || (user.email ? user.email.split('@')[0] : 'User');
-                // Avoid toast on initial load
+
+                // Only show toast if app is fully loaded
                 if (document.getElementById('loadingOverlay') && document.getElementById('loadingOverlay').classList.contains('hidden')) {
                     this.showToast(`Welcome back, ${name}!`);
                 }
             } else {
-                // GUEST (LOGGED OUT)
+                // --- GUEST MODE ---
+                console.log("Guest Mode Active");
                 this.user = null;
                 this.avatar = null;
                 this.updateAuthUI(false);
                 this.updateReviewUI(false);
 
-                // Load Guest Data (Isolated in localStorage)
+                // Load Guest Data from LocalStorage
                 this.myList = JSON.parse(localStorage.getItem('guest_myList')) || [];
                 this.progress = JSON.parse(localStorage.getItem('guest_progress')) || {};
 
+                // Render UI with guest data
                 this.updateUI();
                 this.renderContinueWatching();
                 this.cancelEdit();
             }
         });
     }
+
+    /**
+     * Load User Data from Firebase Realtime Database
+     */
+    loadUserData(uid) {
+        // 1. Load Avatar
+        this.db.ref('users/' + uid + '/avatar').on('value', (snap) => {
+            this.avatar = snap.val() || null;
+            this.updateAuthUI(true);
+        });
+
+        // 2. Load My List (Favorites)
+        this.db.ref('users/' + uid + '/myList').on('value', snap => {
+            this.myList = snap.val() || [];
+            if (this.currentView === 'mylist') {
+                this.renderMyList();
+            }
+            // Update heart icons on any active view
+            this.updateUI();
+        });
+
+        // 3. Load Watch Progress (Continue Watching)
+        this.db.ref('users/' + uid + '/progress').on('value', snap => {
+            this.progress = snap.val() || {};
+            this.renderContinueWatching();
+        });
+    }
+
+    // ==========================================
+    // 5. USER INTERFACE UPDATES (Auth)
+    // ==========================================
 
     updateAuthUI(isLoggedIn) {
         const container = document.getElementById('authSection');
@@ -191,26 +300,9 @@ class OussaStreamApp {
         }
     }
 
-    loadUserData(uid) {
-        // Avatar
-        this.db.ref('users/' + uid + '/avatar').on('value', (snap) => {
-            this.avatar = snap.val() || null;
-            this.updateAuthUI(true);
-        });
-
-        // My List
-        this.db.ref('users/' + uid + '/myList').on('value', snap => {
-            this.myList = snap.val() || [];
-            if (this.currentView === 'mylist') this.renderMyList();
-            this.updateUI(); // Updates buttons state
-        });
-
-        // Progress (Continue Watching)
-        this.db.ref('users/' + uid + '/progress').on('value', snap => {
-            this.progress = snap.val() || {};
-            this.renderContinueWatching();
-        });
-    }
+    // ==========================================
+    // 6. AUTH MODAL HANDLERS
+    // ==========================================
 
     openAuthModal() {
         this.isResetMode = false;
@@ -218,7 +310,9 @@ class OussaStreamApp {
         document.getElementById('authModal').classList.add('show');
     }
 
-    closeAuthModal() { document.getElementById('authModal').classList.remove('show'); }
+    closeAuthModal() {
+        document.getElementById('authModal').classList.remove('show');
+    }
 
     toggleAuthMode() {
         this.isLoginMode = !this.isLoginMode;
@@ -247,7 +341,6 @@ class OussaStreamApp {
             btn.textContent = 'Send Reset Email';
             passGroup.style.display = 'none';
             switchContainer.style.display = 'none';
-            passGroup.style.display = 'block';
             document.getElementById('authPassword').style.display = 'none';
             forgotLink.textContent = 'Back to Sign In';
         } else {
@@ -303,7 +396,17 @@ class OussaStreamApp {
         }
     }
 
-    // --- PROFILE & AVATAR ---
+    logout() {
+        this.auth.signOut();
+        this.showToast("Signed out successfully.");
+        this.closeProfileModal();
+        localStorage.removeItem('oussaStreamLastState');
+    }
+
+    // ==========================================
+    // 7. PROFILE & AVATAR HANDLING
+    // ==========================================
+
     openProfileModal() {
         if (!this.user) return;
         const name = this.user.displayName || (this.user.email ? this.user.email.split('@')[0] : 'User');
@@ -328,7 +431,9 @@ class OussaStreamApp {
         document.getElementById('profileModal').classList.add('show');
     }
 
-    closeProfileModal() { document.getElementById('profileModal').classList.remove('show'); }
+    closeProfileModal() {
+        document.getElementById('profileModal').classList.remove('show');
+    }
 
     handleAvatarSelect(event) {
         const file = event.target.files[0];
@@ -341,6 +446,7 @@ class OussaStreamApp {
 
         const reader = new FileReader();
         reader.onload = (e) => {
+            // Resize image client-side to save DB space
             this.resizeImage(e.target.result, 150, 150, (resizedDataUrl) => {
                 this.tempAvatarData = resizedDataUrl;
                 const img = document.getElementById('profileAvatarImg');
@@ -360,16 +466,19 @@ class OussaStreamApp {
             const canvas = document.createElement('canvas');
             let width = img.width;
             let height = img.height;
+
+            // Calculate Aspect Ratio
             if (width > height) {
                 if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; }
             } else {
                 if (height > maxHeight) { width *= maxHeight / height; height = maxHeight; }
             }
+
             canvas.width = width;
             canvas.height = height;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
-            callback(canvas.toDataURL('image/jpeg', 0.7));
+            callback(canvas.toDataURL('image/jpeg', 0.7)); // 70% Quality
         };
     }
 
@@ -380,9 +489,13 @@ class OussaStreamApp {
 
         try {
             const updates = [];
+
+            // Update Display Name
             if (name && name !== this.user.displayName) {
                 updates.push(this.user.updateProfile({ displayName: name }));
             }
+
+            // Update Password
             if (password) {
                 updates.push(this.user.updatePassword(password));
             }
@@ -392,16 +505,14 @@ class OussaStreamApp {
                 this.showToast("Profile Updated!");
             }
 
+            // Update Avatar in Realtime Database
             if (this.tempAvatarData) {
-                try {
-                    await this.db.ref('users/' + this.user.uid + '/avatar').set(this.tempAvatarData);
-                    this.showToast("Avatar Updated!");
-                    this.updateUserReviews(this.user.uid, name || this.user.displayName, this.tempAvatarData);
-                } catch (dbError) {
-                    console.error("Avatar upload failed:", dbError);
-                    this.showToast("Profile updated, but Avatar failed (Check DB Rules)");
-                }
+                await this.db.ref('users/' + this.user.uid + '/avatar').set(this.tempAvatarData);
+                this.showToast("Avatar Updated!");
+                // Also update past reviews with new avatar
+                this.updateUserReviews(this.user.uid, name || this.user.displayName, this.tempAvatarData);
             } else if (name && name !== this.user.displayName) {
+                // Update reviews with new name only
                 this.updateUserReviews(this.user.uid, name, this.avatar);
             }
 
@@ -423,6 +534,8 @@ class OussaStreamApp {
             const allReviews = snapshot.val();
             if (!allReviews) return;
             const updates = {};
+
+            // Scan all reviews for current user
             Object.keys(allReviews).forEach(movieId => {
                 const movieReviews = allReviews[movieId];
                 Object.keys(movieReviews).forEach(reviewId => {
@@ -433,6 +546,7 @@ class OussaStreamApp {
                     }
                 });
             });
+
             if (Object.keys(updates).length > 0) {
                 this.db.ref().update(updates)
                     .then(() => console.log("User reviews updated successfully"))
@@ -441,14 +555,10 @@ class OussaStreamApp {
         });
     }
 
-    logout() {
-        this.auth.signOut();
-        this.showToast("Signed out successfully.");
-        this.closeProfileModal();
-        sessionStorage.removeItem('oussaStreamLastState'); // Clear state on logout
-    }
+    // ==========================================
+    // 8. DATA HANDLING (Favorites & Progress)
+    // ==========================================
 
-    // --- DATA HANDLING (ISOLATED) ---
     toggleMyList(id) {
         const index = this.myList.indexOf(id);
         if (index > -1) {
@@ -459,24 +569,30 @@ class OussaStreamApp {
             this.showToast("Added to My List!");
         }
 
+        // Save based on Auth State (Isolation logic)
         if (this.user) {
-            // Save to Firebase (Account)
             this.db.ref('users/' + this.user.uid + '/myList').set(this.myList)
                 .catch(e => console.log("List save failed (permission)"));
         } else {
-            // Save to LocalStorage (Guest)
             localStorage.setItem('guest_myList', JSON.stringify(this.myList));
         }
 
-        if (this.currentView === 'mylist') this.renderMyList();
+        if (this.currentView === 'mylist') {
+            this.renderMyList();
+        }
         this.updateUI();
     }
 
+    /**
+     * Updates viewing progress for "Continue Watching"
+     */
     updateProgress(id, time, duration) {
-        const percent = (time / duration) * 100;
+        if (!duration || duration === 0) return;
 
-        // Store season/episode info if available
+        const percent = (time / duration) * 100;
         let meta = {};
+
+        // Capture Season/Episode for Series
         if (this.activeContent && this.activeContent.type === 'series') {
             const sSelect = document.getElementById('seasonSelect');
             const eSelect = document.getElementById('episodeSelect');
@@ -488,27 +604,738 @@ class OussaStreamApp {
             }
         }
 
+        // Logic: If user watched > 95%, consider it finished and remove from continue watching
         if (percent > 95) {
-            // Mark as finished, remove from continue watching
             if (this.progress[id]) delete this.progress[id];
         } else {
-            // Save progress with timestamp
+            // Save progress with timestamp for sorting
             this.progress[id] = { time, percent, lastUpdated: Date.now(), ...meta };
         }
 
+        // Save Data (Isolated)
         if (this.user) {
-            // Save to Firebase (Account)
             this.db.ref('users/' + this.user.uid + '/progress').set(this.progress)
                 .catch(e => console.log("Progress save failed"));
         } else {
-            // Save to LocalStorage (Guest)
             localStorage.setItem('guest_progress', JSON.stringify(this.progress));
-            // Manually trigger render for guests since no Firebase listener
+            // Manually update UI for guests since no DB listener exists
             this.renderContinueWatching();
         }
     }
 
-    // --- REVIEWS SYSTEM ---
+    // ==========================================
+    // 9. PLAYER INITIALIZATION & LOGIC
+    // ==========================================
+
+    initPlayer() {
+        // Initialize Plyr instance
+        this.player = new Plyr('#player', {
+            controls: [
+                'play-large', 'play', 'progress', 'current-time',
+                'mute', 'volume', 'captions', 'settings', 'pip',
+                'airplay', 'fullscreen'
+            ]
+        });
+
+        // --- EVENT: Loaded Metadata (RESUME PLAYBACK) ---
+        this.player.on('loadedmetadata', () => {
+            if (this.activeContent && this.progress[this.activeContent.id]) {
+                const savedTime = this.progress[this.activeContent.id].time;
+                if (savedTime > 0) {
+                    this.player.currentTime = savedTime;
+                    this.showToast(`Resumed at ${Math.floor(savedTime / 60)}m`);
+                }
+            }
+        });
+
+        // --- EVENT: Time Update (PROGRESS & NEXT EP) ---
+        this.player.on('timeupdate', () => {
+            if (this.activeContent && this.player.duration > 0) {
+                const currentTime = this.player.currentTime;
+                const duration = this.player.duration;
+
+                // THROTTLING: Update Progress only every 5 seconds to prevent DB spam
+                if (currentTime - this.lastSaveTime > 5) {
+                    this.updateProgress(this.activeContent.id, currentTime, duration);
+                    this.lastSaveTime = currentTime;
+                }
+
+                // NEXT EPISODE LOGIC
+                if (this.activeContent.type === 'series') {
+                    const remaining = duration - currentTime;
+                    // Show button if less than 40s remaining
+                    if (remaining <= 40 && remaining > 0) {
+                        this.showNextEpisodeOverlay();
+                    } else {
+                        this.hideNextEpisodeOverlay();
+                    }
+                }
+            }
+        });
+
+        // --- EVENT: Ended (AUTO PLAY) ---
+        this.player.on('ended', () => {
+            if (this.activeContent && this.activeContent.type === 'series') {
+                this.playNextEpisode();
+            }
+        });
+    }
+
+    // --- NEXT EPISODE UI HELPERS ---
+
+    showNextEpisodeOverlay() {
+        const overlay = document.getElementById('nextEpOverlay');
+        const nextBtn = document.getElementById('nextEpBtn');
+        const nextData = this.findNextEpisode();
+
+        // Only show if a next episode actually exists
+        if (nextData && overlay && !overlay.classList.contains('show')) {
+            overlay.classList.add('show');
+            nextBtn.onclick = () => this.playNextEpisode();
+        }
+    }
+
+    hideNextEpisodeOverlay() {
+        const overlay = document.getElementById('nextEpOverlay');
+        if (overlay) overlay.classList.remove('show');
+    }
+
+    /**
+     * Logic to calculate the next episode object
+     */
+    findNextEpisode() {
+        const sNum = parseInt(document.getElementById('seasonSelect').value);
+        const currentUrl = document.getElementById('episodeSelect').value;
+        const seasons = this.activeContent.seasons;
+
+        if (!seasons) return null;
+
+        const currentSeason = seasons.find(s => (s.seasonNumber || 1) === sNum);
+        if (!currentSeason) return null;
+
+        const currentEpIndex = currentSeason.episodes.findIndex(e => e.videoUrl === currentUrl);
+
+        // Case 1: Next episode in same season
+        if (currentEpIndex !== -1 && currentEpIndex < currentSeason.episodes.length - 1) {
+            return {
+                season: sNum,
+                episode: currentSeason.episodes[currentEpIndex + 1]
+            };
+        }
+        // Case 2: First episode of next season
+        else {
+            const nextSeason = seasons.find(s => (s.seasonNumber || 1) === sNum + 1);
+            if (nextSeason && nextSeason.episodes.length > 0) {
+                return {
+                    season: sNum + 1,
+                    episode: nextSeason.episodes[0]
+                };
+            }
+        }
+        return null;
+    }
+
+    playNextEpisode() {
+        const nextData = this.findNextEpisode();
+        if (nextData) {
+            // Update Selects in UI
+            document.getElementById('seasonSelect').value = nextData.season;
+            this.onSeasonChange(); // Refresh episode list based on new season
+            document.getElementById('episodeSelect').value = nextData.episode.videoUrl;
+
+            // Play
+            this.playEpisode();
+            this.showToast(`Playing Season ${nextData.season} Episode ${nextData.episode.episodeNumber}`);
+            this.hideNextEpisodeOverlay();
+        }
+    }
+
+    // ==========================================
+    // 10. CONTENT DATA FETCHING
+    // ==========================================
+
+    fetchData() {
+        // Fetch Movies
+        this.db.ref('movies').on('value', snap => {
+            const data = snap.val();
+            this.movies = data ? Object.keys(data).map(k => ({ id: k, type: 'movie', ...data[k] })) : [];
+            this.populateYearFilter();
+
+            if (this.currentView === 'movies') this.renderCatalog('movie');
+
+            // Important: Update Continue Watching when data arrives
+            this.renderContinueWatching();
+            this.updateUI();
+        });
+
+        // Fetch Series
+        this.db.ref('series').on('value', snap => {
+            const data = snap.val();
+            this.series = data ? Object.keys(data).map(k => ({ id: k, type: 'series', ...data[k] })) : [];
+            this.populateYearFilter();
+
+            if (this.currentView === 'series') this.renderCatalog('series');
+
+            this.renderContinueWatching();
+            this.updateUI();
+        });
+    }
+
+    // ==========================================
+    // 11. FILTERS, SEARCH & PAGINATION
+    // ==========================================
+
+    populateYearFilter() {
+        const yearSelect = document.getElementById('yearSelect');
+        const allItems = [...this.movies, ...this.series];
+        // Extract unique years and sort descending
+        const years = [...new Set(allItems.map(item => item.year).filter(y => y))].sort((a, b) => b - a);
+        yearSelect.innerHTML = '<option value="all">All Years</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
+    }
+
+    setupFilters() {
+        const genreSelect = document.getElementById('genreSelect');
+        const yearSelect = document.getElementById('yearSelect');
+        const sortSelect = document.getElementById('sortSelect');
+
+        const applyFilters = () => {
+            this.activeFilters.genre = genreSelect.value;
+            this.activeFilters.year = yearSelect.value;
+            this.activeFilters.sort = sortSelect.value;
+            this.currentPage = 1;
+            this.renderCatalog(this.currentCatalogType);
+        };
+
+        genreSelect.addEventListener('change', applyFilters);
+        yearSelect.addEventListener('change', applyFilters);
+        sortSelect.addEventListener('change', applyFilters);
+    }
+
+    setupSearch() {
+        const input = document.getElementById('searchInput');
+        if (input) {
+            input.addEventListener('input', () => {
+                if (this.currentView !== 'movies' && this.currentView !== 'series') {
+                    this.showMovies();
+                }
+                if (this.currentCatalogType === 'movie') this.renderCatalog('movie');
+                else if (this.currentCatalogType === 'series') this.renderCatalog('series');
+            });
+        }
+    }
+
+    // ==========================================
+    // 12. VIEW NAVIGATION HELPERS
+    // ==========================================
+
+    showHome(fromHistory = false) {
+        this.currentView = 'home';
+        this.switchView('mainContent');
+        this.renderContinueWatching();
+        if (!fromHistory) this.updateURL('home');
+    }
+
+    showMovies(fromHistory = false) {
+        this.currentView = 'movies';
+        this.currentPage = 1;
+        this.currentCatalogType = 'movie';
+        this.resetFiltersUI();
+        document.getElementById('pageTitle').textContent = 'Movies';
+        this.renderCatalog('movie');
+        this.switchView('catalogPage');
+        if (!fromHistory) this.updateURL('movies');
+    }
+
+    showSeries(fromHistory = false) {
+        this.currentView = 'series';
+        this.currentPage = 1;
+        this.currentCatalogType = 'series';
+        this.resetFiltersUI();
+        document.getElementById('pageTitle').textContent = 'TV Series';
+        this.renderCatalog('series');
+        this.switchView('catalogPage');
+        if (!fromHistory) this.updateURL('series');
+    }
+
+    showMyList(fromHistory = false) {
+        this.currentView = 'mylist';
+        this.renderMyList();
+        this.switchView('myListPage');
+        if (!fromHistory) this.updateURL('mylist');
+    }
+
+    resetFiltersUI() {
+        this.activeFilters = { genre: 'all', year: 'all', sort: 'newest' };
+        document.getElementById('genreSelect').value = 'all';
+        document.getElementById('yearSelect').value = 'all';
+        document.getElementById('sortSelect').value = 'newest';
+        document.getElementById('searchInput').value = '';
+    }
+
+    switchView(id) {
+        document.body.style.overflow = 'auto';
+
+        // Stop player if moving away from player page
+        if (this.player && id !== 'playerPage') {
+            try { this.player.stop(); } catch (e) { }
+        }
+
+        // Clean iframes
+        const iframes = document.querySelectorAll('iframe');
+        iframes.forEach(iframe => {
+            if (iframe.id === 'embedPlayer' || iframe.closest('.player-page')) {
+                iframe.src = '';
+            }
+        });
+
+        this.stopPlayerUiTimer();
+        const playerPage = document.getElementById('playerPage');
+        if (playerPage) {
+            playerPage.classList.remove('player-ui-hidden');
+            if (id !== 'playerPage') {
+                playerPage.onmousemove = null;
+                playerPage.ontouchstart = null;
+                playerPage.onclick = null;
+            }
+        }
+
+        this.hideNextEpisodeOverlay();
+
+        // Toggle Visibility
+        ['mainContent', 'catalogPage', 'myListPage', 'detailsPage', 'playerPage'].forEach(p => {
+            const el = document.getElementById(p);
+            if (el) el.classList.toggle('hidden', p !== id);
+        });
+
+        window.scrollTo(0, 0);
+        this.saveAppState();
+    }
+
+    goBack() {
+        if (this.currentView === 'player') {
+            this.closePlayer();
+        } else {
+            if (window.history.length > 1) {
+                history.back();
+            } else {
+                this.showHome();
+            }
+        }
+    }
+
+    // ==========================================
+    // 13. UI RENDERING (Catalog, Carousel, Etc)
+    // ==========================================
+
+    renderCatalog(typeFilter) {
+        const container = document.getElementById('catalogGrid');
+        if (!container) return;
+
+        let data = typeFilter === 'movie' ? this.movies : this.series;
+
+        // Apply Search
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        if (query) {
+            data = data.filter(i => i.title.toLowerCase().includes(query));
+        }
+
+        // Apply Genre
+        if (this.activeFilters.genre !== 'all') {
+            data = data.filter(item => {
+                const itemGenre = (item.genre || item.type || "").toLowerCase();
+                return itemGenre.includes(this.activeFilters.genre.toLowerCase());
+            });
+        }
+
+        // Apply Year
+        if (this.activeFilters.year !== 'all') {
+            data = data.filter(item => item.year == this.activeFilters.year);
+        }
+
+        // Apply Sort
+        data.sort((a, b) => {
+            if (this.activeFilters.sort === 'newest') return (b.year || 0) - (a.year || 0);
+            if (this.activeFilters.sort === 'oldest') return (a.year || 0) - (b.year || 0);
+            if (this.activeFilters.sort === 'rating') return (b.rating || 0) - (a.rating || 0);
+            return 0;
+        });
+
+        if (data.length === 0) {
+            container.innerHTML = '<div class="col-12 text-center mt-5 text-muted"><h3>No results found.</h3></div>';
+            document.getElementById('paginationControls').innerHTML = '';
+            return;
+        }
+
+        // Pagination Logic
+        const totalItems = data.length;
+        const totalPages = Math.ceil(totalItems / this.itemsPerPage);
+        if (this.currentPage > totalPages) this.currentPage = 1;
+
+        const start = (this.currentPage - 1) * this.itemsPerPage;
+        const end = start + this.itemsPerPage;
+        const paginatedItems = data.slice(start, end);
+
+        container.innerHTML = paginatedItems.map(i => this.createCard(i)).join('');
+        this.renderPaginationControls(totalPages);
+    }
+
+    renderPaginationControls(totalPages) {
+        const controls = document.getElementById('paginationControls');
+        if (totalPages <= 1) { controls.innerHTML = ''; return; }
+
+        controls.innerHTML = `
+            <button class="page-btn" onclick="app.changePage(-1)" ${this.currentPage === 1 ? 'disabled' : ''}>
+                <i class="fas fa-chevron-left"></i> Prev
+            </button>
+            <span class="page-info">Page ${this.currentPage} of ${totalPages}</span>
+            <button class="page-btn" onclick="app.changePage(1)" ${this.currentPage === totalPages ? 'disabled' : ''}>
+                Next <i class="fas fa-chevron-right"></i>
+            </button>
+        `;
+    }
+
+    changePage(direction) {
+        this.currentPage += direction;
+        this.renderCatalog(this.currentCatalogType);
+        window.scrollTo(0, 0);
+    }
+
+    filterByGenre(genre) {
+        this.currentView = 'movies';
+        this.currentPage = 1;
+        this.currentCatalogType = 'movie';
+        this.resetFiltersUI();
+        this.activeFilters.genre = genre;
+        document.getElementById('genreSelect').value = genre;
+        document.getElementById('pageTitle').textContent = `${genre}`;
+        this.switchView('catalogPage');
+        this.renderCatalog('movie');
+    }
+
+    createCard(item, isContinue = false) {
+        const inList = this.myList.includes(item.id);
+        const heartClass = inList ? 'fas fa-heart active-heart' : 'far fa-heart';
+        const prog = this.progress[item.id];
+
+        // Contextual Action Button
+        const action = isContinue ? `app.playActiveMovieFromCard('${item.id}')` : `app.openDetails('${item.id}')`;
+        const btnText = isContinue ? 'Resume' : 'Info';
+        const playIcon = isContinue ? 'fa-play' : 'fa-info-circle';
+
+        return `
+        <div class="content-card" onclick="${action}">
+            ${item.type === 'series' ? '<span class="badge-series">Series</span>' : ''}
+            <img src="${item.poster}" alt="${item.title}" class="card-img" loading="lazy">
+            ${isContinue && prog ? `<div class="progress-container"><div class="progress-bar" style="width: ${prog.percent}%"></div></div>` : ''}
+            <div class="card-overlay">
+                <h5 class="card-title">${item.title}</h5>
+                <div class="card-buttons">
+                    <button class="play-btn"><i class="fas ${playIcon}"></i> ${btnText}</button>
+                    <button class="list-btn" onclick="event.stopPropagation(); app.toggleMyList('${item.id}')">
+                        <i class="${heartClass}"></i>
+                    </button>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    playActiveMovieFromCard(id) {
+        const all = [...this.movies, ...this.series];
+        const item = all.find(x => x.id === id);
+        if (item) {
+            this.activeContent = item;
+            this.playActiveMovie();
+        }
+    }
+
+    // ==========================================
+    // 14. DETAILS PAGE LOGIC
+    // ==========================================
+
+    openDetails(id, fromHistory = false) {
+        const all = [...this.movies, ...this.series];
+        const item = all.find(x => x.id === id);
+        if (!item) return;
+
+        this.activeContent = item;
+        this.currentView = 'details';
+
+        if (!fromHistory) this.updateURL('details', id);
+
+        // Populate Details UI
+        const hero = document.getElementById('detailHero');
+        const bgImage = item.backdrop || item.poster;
+        hero.style.backgroundImage = `url('${bgImage}')`;
+
+        document.getElementById('detailPoster').src = item.poster;
+        document.getElementById('detailTitle').textContent = item.title;
+        document.getElementById('detailDesc').textContent = item.description || "No description available.";
+        document.getElementById('detailYear').textContent = item.year || "N/A";
+        document.getElementById('detailRating').innerHTML = `<i class="fas fa-star"></i> ${item.rating || "N/A"}`;
+        document.getElementById('detailGenre').textContent = item.genre || item.type.toUpperCase();
+
+        // Button State (Resume vs Play)
+        const playBtn = document.getElementById('detailPlayBtn');
+        const listBtn = document.getElementById('detailListBtn');
+
+        playBtn.innerHTML = '<i class="fas fa-play"></i> Watch Now';
+        if (this.progress[item.id]) {
+            playBtn.innerHTML = '<i class="fas fa-play"></i> Resume';
+        }
+
+        playBtn.onclick = () => this.playActiveMovie();
+        this.updateDetailListBtn(item.id);
+
+        listBtn.onclick = () => {
+            this.toggleMyList(item.id);
+            this.updateDetailListBtn(item.id);
+        };
+
+        this.cancelEdit();
+        this.fetchReviews(id);
+        this.updateReviewUI(!!this.user);
+
+        this.renderRelated(item.type, item.id, 'detailRelatedGrid');
+
+        this.switchView('detailsPage');
+    }
+
+    updateDetailListBtn(id) {
+        const btn = document.getElementById('detailListBtn');
+        if (this.myList.includes(id)) {
+            btn.innerHTML = '<i class="fas fa-check"></i> Added';
+            btn.classList.add('btn-light');
+            btn.classList.remove('btn-outline-light');
+        } else {
+            btn.innerHTML = '<i class="far fa-heart"></i> My List';
+            btn.classList.add('btn-outline-light');
+            btn.classList.remove('btn-light');
+        }
+    }
+
+    // ==========================================
+    // 15. PLAYBACK CONTROL (Movie & Series)
+    // ==========================================
+
+    playActiveMovie() {
+        if (!this.activeContent) return;
+        const item = this.activeContent;
+        const controls = document.getElementById('seriesControls');
+        const playerTitle = document.getElementById('playerTitle');
+
+        this.switchView('playerPage');
+        this.currentView = 'player';
+        this.updateURL('player', item.id);
+
+        this.setupPlayerUI();
+
+        // Auto Landscape on Mobile
+        if (window.innerWidth < 768) {
+            this.enterFullscreenAndRotate();
+        }
+
+        if (playerTitle) playerTitle.textContent = `Now Watching: ${item.title}`;
+
+        const prog = this.progress[item.id];
+
+        // --- SERIES HANDLING ---
+        if (item.type === 'series' || (item.seasons && item.seasons.length > 0)) {
+            controls.classList.remove('hidden');
+            const sSelect = document.getElementById('seasonSelect');
+            const eSelect = document.getElementById('episodeSelect');
+
+            if (item.seasons && item.seasons.length > 0) {
+                // Populate Seasons Dropdown
+                sSelect.innerHTML = item.seasons.map(s => `<option value="${s.seasonNumber || 1}">Season ${s.seasonNumber || 1}</option>`).join('');
+
+                // Restore saved Season
+                if (prog && prog.season) {
+                    sSelect.value = prog.season;
+                }
+
+                // Populate Episodes based on selected season
+                this.onSeasonChange();
+
+                // Restore saved Episode
+                if (prog && prog.episodeUrl) {
+                    eSelect.value = prog.episodeUrl;
+                }
+
+                // Start Playback
+                this.playEpisode();
+            }
+        }
+        // --- MOVIE HANDLING ---
+        else {
+            controls.classList.add('hidden');
+            this.setPlayerSource(item.videoUrl);
+        }
+
+        // Note: Seekiing happens in 'loadedmetadata' event inside initPlayer
+    }
+
+    setPlayerSource(url) {
+        const embedPlayer = document.querySelector('#playerPage iframe');
+        const plyrContainer = document.querySelector('#playerPage .plyr');
+        const rawVideo = document.getElementById('player');
+
+        if (!url) {
+            this.showToast("Error: Video link missing");
+            return;
+        }
+
+        // Detect Iframe Embeds
+        const isEmbed = url.includes('/e/') || url.includes('myvidplay') || url.includes('dood') || url.includes('pixel');
+
+        if (isEmbed) {
+            if (this.player) this.player.stop();
+            if (plyrContainer) plyrContainer.style.display = 'none';
+            if (rawVideo) rawVideo.style.display = 'none';
+
+            if (embedPlayer) {
+                embedPlayer.classList.remove('hidden');
+                embedPlayer.style.display = 'block';
+                embedPlayer.src = url;
+            }
+        } else {
+            if (embedPlayer) {
+                embedPlayer.classList.add('hidden');
+                embedPlayer.style.display = 'none';
+                embedPlayer.src = '';
+            }
+            if (plyrContainer) plyrContainer.style.display = 'block';
+            if (rawVideo) rawVideo.style.display = 'block';
+
+            const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
+            this.player.source = {
+                type: 'video',
+                sources: [{ src: url, provider: isYouTube ? 'youtube' : 'html5' }]
+            };
+
+            setTimeout(() => this.player.play(), 500);
+        }
+    }
+
+    onSeasonChange() {
+        const sNum = parseInt(document.getElementById('seasonSelect').value);
+        const eSelect = document.getElementById('episodeSelect');
+
+        if (!this.activeContent.seasons) return;
+
+        const season = this.activeContent.seasons.find(s => (s.seasonNumber || 1) === sNum);
+
+        if (season) {
+            eSelect.innerHTML = season.episodes.map(e => `<option value="${e.videoUrl}">E${e.episodeNumber}: ${e.title}</option>`).join('');
+        }
+    }
+
+    playEpisode() {
+        const url = document.getElementById('episodeSelect').value;
+        if (url) this.setPlayerSource(url);
+    }
+
+    closePlayer() {
+        if (this.player) this.player.stop();
+        const embedPlayer = document.querySelector('#playerPage iframe');
+        if (embedPlayer) embedPlayer.src = '';
+
+        this.exitFullscreenAndRotate();
+        this.stopPlayerUiTimer();
+        document.body.style.overflow = 'auto';
+
+        if (this.activeContent) {
+            this.currentView = 'details';
+            this.switchView('detailsPage');
+            this.updateURL('details', this.activeContent.id);
+        } else {
+            this.showHome();
+        }
+    }
+
+    // ==========================================
+    // 16. PLAYER UI & FULLSCREEN UTILS
+    // ==========================================
+
+    setupPlayerUI() {
+        const playerPage = document.getElementById('playerPage');
+        if (!playerPage) return;
+
+        const showUI = () => {
+            playerPage.classList.remove('player-ui-hidden');
+            this.resetPlayerUiTimer();
+        };
+
+        playerPage.onmousemove = showUI;
+        playerPage.ontouchstart = showUI;
+        playerPage.onclick = showUI;
+
+        this.resetPlayerUiTimer();
+    }
+
+    resetPlayerUiTimer() {
+        this.stopPlayerUiTimer();
+        this.playerUiTimeout = setTimeout(() => {
+            const playerPage = document.getElementById('playerPage');
+            if (playerPage && this.currentView === 'player') {
+                playerPage.classList.add('player-ui-hidden');
+            }
+        }, 3000);
+    }
+
+    stopPlayerUiTimer() {
+        if (this.playerUiTimeout) {
+            clearTimeout(this.playerUiTimeout);
+            this.playerUiTimeout = null;
+        }
+    }
+
+    async enterFullscreenAndRotate() {
+        const playerPage = document.getElementById('playerPage');
+        if (!playerPage) return;
+
+        try {
+            if (playerPage.requestFullscreen) {
+                await playerPage.requestFullscreen();
+            } else if (playerPage.webkitRequestFullscreen) {
+                await playerPage.webkitRequestFullscreen();
+            }
+
+            if (screen.orientation && screen.orientation.lock) {
+                await screen.orientation.lock('landscape').catch(e => console.log('Orientation lock not supported'));
+            }
+        } catch (err) {
+            console.log("Fullscreen request failed:", err);
+        }
+    }
+
+    exitFullscreenAndRotate() {
+        if (screen.orientation && screen.orientation.unlock) {
+            screen.orientation.unlock();
+        }
+
+        if (document.fullscreenElement || document.webkitFullscreenElement) {
+            if (document.exitFullscreen) {
+                document.exitFullscreen().catch(err => console.log(err));
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            }
+        }
+    }
+
+    setupFullscreenListener() {
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement && this.currentView === 'player') {
+                if (screen.orientation && screen.orientation.unlock) {
+                    screen.orientation.unlock();
+                }
+            }
+        });
+    }
+
+    // ==========================================
+    // 17. REVIEWS: FETCH & RENDER
+    // ==========================================
+
     updateReviewUI(isLoggedIn) {
         const inputContainer = document.getElementById('reviewInputContainer');
         const loginContainer = document.getElementById('loginToReview');
@@ -627,6 +1454,10 @@ class OussaStreamApp {
         return html;
     }
 
+    // ==========================================
+    // 18. REVIEWS: SUBMIT & EDIT
+    // ==========================================
+
     submitReview(e) {
         e.preventDefault();
         if (!this.user || !this.activeContent) return;
@@ -726,479 +1557,17 @@ class OussaStreamApp {
             });
     }
 
-    // --- BASE LOGIC ---
-    initPlayer() {
-        this.player = new Plyr('#player', { controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'] });
+    // ==========================================
+    // 19. GLOBAL UI RENDERERS (Hero, Lists)
+    // ==========================================
 
-        // 4. RESUME LOGIC (Wait for data)
-        this.player.on('loadedmetadata', () => {
-            if (this.activeContent && this.progress[this.activeContent.id]) {
-                const savedTime = this.progress[this.activeContent.id].time;
-                if (savedTime > 0) {
-                    this.player.currentTime = savedTime;
-                    this.showToast(`Resumed at ${Math.floor(savedTime / 60)}m`);
-                }
-            }
-        });
-
-        // 3. NEXT EPISODE LOGIC (40s)
-        this.player.on('timeupdate', () => {
-            if (this.activeContent && this.player.duration > 0) {
-                const currentTime = this.player.currentTime;
-                const duration = this.player.duration;
-
-                // Save progress every 5 seconds
-                if (currentTime > 5 && Math.floor(currentTime) % 5 === 0) {
-                    this.updateProgress(this.activeContent.id, currentTime, duration);
-                }
-
-                // Show Next Ep button if < 40s remaining
-                if (this.activeContent.type === 'series') {
-                    const remaining = duration - currentTime;
-                    if (remaining <= 40 && remaining > 0) {
-                        this.showNextEpisodeOverlay();
-                    } else {
-                        this.hideNextEpisodeOverlay();
-                    }
-                }
-            }
-        });
-
-        // Auto play next on end
-        this.player.on('ended', () => {
-            if (this.activeContent && this.activeContent.type === 'series') {
-                this.playNextEpisode();
-            }
-        });
-    }
-
-    // --- NEXT EPISODE HELPERS ---
-    showNextEpisodeOverlay() {
-        const overlay = document.getElementById('nextEpOverlay');
-        const nextBtn = document.getElementById('nextEpBtn');
-        if (overlay && !overlay.classList.contains('show')) {
-            // Find next episode
-            const nextEpData = this.findNextEpisode();
-            if (nextEpData) {
-                overlay.classList.add('show');
-                nextBtn.onclick = () => this.playNextEpisode();
-            }
-        }
-    }
-
-    hideNextEpisodeOverlay() {
-        const overlay = document.getElementById('nextEpOverlay');
-        if (overlay) overlay.classList.remove('show');
-    }
-
-    findNextEpisode() {
-        const sNum = parseInt(document.getElementById('seasonSelect').value);
-        const currentUrl = document.getElementById('episodeSelect').value;
-        const seasons = this.activeContent.seasons;
-
-        if (!seasons) return null;
-
-        const currentSeason = seasons.find(s => (s.seasonNumber || 1) === sNum);
-        if (!currentSeason) return null;
-
-        const currentEpIndex = currentSeason.episodes.findIndex(e => e.videoUrl === currentUrl);
-
-        // Next in same season
-        if (currentEpIndex !== -1 && currentEpIndex < currentSeason.episodes.length - 1) {
-            return {
-                season: sNum,
-                episode: currentSeason.episodes[currentEpIndex + 1]
-            };
-        }
-        // First of next season
-        else {
-            const nextSeason = seasons.find(s => (s.seasonNumber || 1) === sNum + 1);
-            if (nextSeason && nextSeason.episodes.length > 0) {
-                return {
-                    season: sNum + 1,
-                    episode: nextSeason.episodes[0]
-                };
-            }
-        }
-        return null;
-    }
-
-    playNextEpisode() {
-        const nextData = this.findNextEpisode();
-        if (nextData) {
-            // Update Selects
-            document.getElementById('seasonSelect').value = nextData.season;
-            this.onSeasonChange(); // Refresh episode list
-            document.getElementById('episodeSelect').value = nextData.episode.videoUrl;
-
-            // Play
-            this.playEpisode();
-            this.showToast(`Playing S${nextData.season} E${nextData.episode.episodeNumber}`);
-            this.hideNextEpisodeOverlay();
-        }
-    }
-
-    fetchData() {
-        this.db.ref('movies').on('value', snap => {
-            const data = snap.val();
-            this.movies = data ? Object.keys(data).map(k => ({ id: k, type: 'movie', ...data[k] })) : [];
-            this.populateYearFilter();
-            if (this.currentView === 'movies') this.renderCatalog('movie');
-            this.renderContinueWatching();
-            this.updateUI();
-        });
-        this.db.ref('series').on('value', snap => {
-            const data = snap.val();
-            this.series = data ? Object.keys(data).map(k => ({ id: k, type: 'series', ...data[k] })) : [];
-            this.populateYearFilter();
-            if (this.currentView === 'series') this.renderCatalog('series');
-            this.renderContinueWatching();
-            this.updateUI();
-        });
-    }
-
-    populateYearFilter() {
-        const yearSelect = document.getElementById('yearSelect');
-        const allItems = [...this.movies, ...this.series];
-        const years = [...new Set(allItems.map(item => item.year).filter(y => y))].sort((a, b) => b - a);
-        yearSelect.innerHTML = '<option value="all">All Years</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
-    }
-
-    setupFilters() {
-        const genreSelect = document.getElementById('genreSelect');
-        const yearSelect = document.getElementById('yearSelect');
-        const sortSelect = document.getElementById('sortSelect');
-        const applyFilters = () => {
-            this.activeFilters.genre = genreSelect.value;
-            this.activeFilters.year = yearSelect.value;
-            this.activeFilters.sort = sortSelect.value;
-            this.currentPage = 1;
-            this.renderCatalog(this.currentCatalogType);
-        };
-        genreSelect.addEventListener('change', applyFilters);
-        yearSelect.addEventListener('change', applyFilters);
-        sortSelect.addEventListener('change', applyFilters);
-    }
-
-    showHome(fromHistory = false) { this.currentView = 'home'; this.switchView('mainContent'); this.renderContinueWatching(); if (!fromHistory) this.updateURL('home'); }
-    showMovies(fromHistory = false) { this.currentView = 'movies'; this.currentPage = 1; this.currentCatalogType = 'movie'; this.resetFiltersUI(); document.getElementById('pageTitle').textContent = 'Movies'; this.renderCatalog('movie'); this.switchView('catalogPage'); if (!fromHistory) this.updateURL('movies'); }
-    showSeries(fromHistory = false) { this.currentView = 'series'; this.currentPage = 1; this.currentCatalogType = 'series'; this.resetFiltersUI(); document.getElementById('pageTitle').textContent = 'TV Series'; this.renderCatalog('series'); this.switchView('catalogPage'); if (!fromHistory) this.updateURL('series'); }
-    showMyList(fromHistory = false) { this.currentView = 'mylist'; this.renderMyList(); this.switchView('myListPage'); if (!fromHistory) this.updateURL('mylist'); }
-
-    resetFiltersUI() {
-        this.activeFilters = { genre: 'all', year: 'all', sort: 'newest' };
-        document.getElementById('genreSelect').value = 'all';
-        document.getElementById('yearSelect').value = 'all';
-        document.getElementById('sortSelect').value = 'newest';
-        document.getElementById('searchInput').value = '';
-    }
-
-    async enterFullscreenAndRotate() {
-        const playerPage = document.getElementById('playerPage');
-        if (!playerPage) return;
-
-        try {
-            if (playerPage.requestFullscreen) {
-                await playerPage.requestFullscreen();
-            } else if (playerPage.webkitRequestFullscreen) {
-                await playerPage.webkitRequestFullscreen(); // Safari
-            }
-
-            if (screen.orientation && screen.orientation.lock) {
-                await screen.orientation.lock('landscape').catch(e => console.log('Orientation lock not supported'));
-            }
-        } catch (err) {
-            console.log("Fullscreen request failed:", err);
-        }
-    }
-
-    exitFullscreenAndRotate() {
-        if (screen.orientation && screen.orientation.unlock) {
-            screen.orientation.unlock();
-        }
-
-        if (document.fullscreenElement || document.webkitFullscreenElement) {
-            if (document.exitFullscreen) {
-                document.exitFullscreen().catch(err => console.log(err));
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            }
-        }
-    }
-
-    setupFullscreenListener() {
-        document.addEventListener('fullscreenchange', () => {
-            if (!document.fullscreenElement && this.currentView === 'player') {
-                if (screen.orientation && screen.orientation.unlock) {
-                    screen.orientation.unlock();
-                }
-            }
-        });
-    }
-
-    switchView(id) {
-        document.body.style.overflow = 'auto';
-
-        if (this.player) {
-            try { this.player.stop(); } catch (e) { }
-        }
-
-        const iframes = document.querySelectorAll('iframe');
-        iframes.forEach(iframe => {
-            if (iframe.id === 'embedPlayer' || iframe.closest('.player-page')) {
-                iframe.src = '';
-            }
-        });
-
-        this.stopPlayerUiTimer();
-        const playerPage = document.getElementById('playerPage');
-        if (playerPage) {
-            playerPage.classList.remove('player-ui-hidden');
-
-            if (id !== 'playerPage') {
-                playerPage.onmousemove = null;
-                playerPage.ontouchstart = null;
-                playerPage.onclick = null;
-            }
-        }
-
-        // Hide next ep overlay on switch
-        this.hideNextEpisodeOverlay();
-
-        ['mainContent', 'catalogPage', 'myListPage', 'detailsPage', 'playerPage'].forEach(p => {
-            const el = document.getElementById(p);
-            if (el) el.classList.toggle('hidden', p !== id);
-        });
-
-        window.scrollTo(0, 0);
-        this.saveAppState();
-    }
-
-    renderCatalog(typeFilter) {
-        const container = document.getElementById('catalogGrid');
+    renderNewContent() {
+        const container = document.getElementById('newContentGrid');
         if (!container) return;
-        let data = typeFilter === 'movie' ? this.movies : this.series;
 
-        const query = document.getElementById('searchInput').value.toLowerCase();
-        if (query) data = data.filter(i => i.title.toLowerCase().includes(query));
-
-        if (this.activeFilters.genre !== 'all') {
-            data = data.filter(item => {
-                const itemGenre = (item.genre || item.type || "").toLowerCase();
-                return itemGenre.includes(this.activeFilters.genre.toLowerCase());
-            });
-        }
-
-        if (this.activeFilters.year !== 'all') { data = data.filter(item => item.year == this.activeFilters.year); }
-
-        data.sort((a, b) => {
-            if (this.activeFilters.sort === 'newest') return (b.year || 0) - (a.year || 0);
-            if (this.activeFilters.sort === 'oldest') return (a.year || 0) - (b.year || 0);
-            if (this.activeFilters.sort === 'rating') return (b.rating || 0) - (a.rating || 0);
-            return 0;
-        });
-
-        if (data.length === 0) { container.innerHTML = '<div class="col-12 text-center mt-5 text-muted"><h3>No results found.</h3></div>'; document.getElementById('paginationControls').innerHTML = ''; return; }
-
-        const totalItems = data.length;
-        const totalPages = Math.ceil(totalItems / this.itemsPerPage);
-        if (this.currentPage > totalPages) this.currentPage = 1;
-
-        const start = (this.currentPage - 1) * this.itemsPerPage;
-        const end = start + this.itemsPerPage;
-        const paginatedItems = data.slice(start, end);
-
-        container.innerHTML = paginatedItems.map(i => this.createCard(i)).join('');
-        this.renderPaginationControls(totalPages);
+        const all = [...this.movies, ...this.series].sort((a, b) => b.year - a.year).slice(0, 6);
+        container.innerHTML = all.map(i => this.createCard(i)).join('');
     }
-
-    renderPaginationControls(totalPages) {
-        const controls = document.getElementById('paginationControls');
-        if (totalPages <= 1) { controls.innerHTML = ''; return; }
-        controls.innerHTML = `<button class="page-btn" onclick="app.changePage(-1)" ${this.currentPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i> Prev</button><span class="page-info">Page ${this.currentPage} of ${totalPages}</span><button class="page-btn" onclick="app.changePage(1)" ${this.currentPage === totalPages ? 'disabled' : ''}>Next <i class="fas fa-chevron-right"></i></button>`;
-    }
-
-    changePage(direction) { this.currentPage += direction; this.renderCatalog(this.currentCatalogType); window.scrollTo(0, 0); }
-
-    filterByGenre(genre) {
-        this.currentView = 'movies';
-        this.currentPage = 1;
-        this.currentCatalogType = 'movie';
-        this.resetFiltersUI();
-        this.activeFilters.genre = genre;
-        document.getElementById('genreSelect').value = genre;
-        document.getElementById('pageTitle').textContent = `${genre}`;
-        this.switchView('catalogPage');
-        this.renderCatalog('movie');
-    }
-
-    createCard(item, isContinue = false) {
-        const inList = this.myList.includes(item.id);
-        const heartClass = inList ? 'fas fa-heart active-heart' : 'far fa-heart';
-        const prog = this.progress[item.id];
-
-        // Resume Playback: Continue watching takes you directly to player
-        const action = isContinue ? `app.playActiveMovieFromCard('${item.id}')` : `app.openDetails('${item.id}')`;
-        const btnText = isContinue ? 'Resume' : 'Info';
-        const playIcon = isContinue ? 'fa-play' : 'fa-info-circle';
-
-        return `
-        <div class="content-card" onclick="${action}">
-            ${item.type === 'series' ? '<span class="badge-series">Series</span>' : ''}
-            <img src="${item.poster}" alt="${item.title}" class="card-img" loading="lazy">
-            ${isContinue && prog ? `<div class="progress-container"><div class="progress-bar" style="width: ${prog.percent}%"></div></div>` : ''}
-            <div class="card-overlay">
-                <h5 class="card-title">${item.title}</h5>
-                <div class="card-buttons">
-                    <button class="play-btn"><i class="fas ${playIcon}"></i> ${btnText}</button>
-                    <button class="list-btn" onclick="event.stopPropagation(); app.toggleMyList('${item.id}')"><i class="${heartClass}"></i></button>
-                </div>
-            </div>
-        </div>`;
-    }
-
-    // Helper to play directly from card
-    playActiveMovieFromCard(id) {
-        const all = [...this.movies, ...this.series];
-        const item = all.find(x => x.id === id);
-        if (item) {
-            this.activeContent = item;
-            this.playActiveMovie();
-        }
-    }
-
-    openDetails(id, fromHistory = false) {
-        const all = [...this.movies, ...this.series];
-        const item = all.find(x => x.id === id);
-        if (!item) return;
-        this.activeContent = item;
-        this.currentView = 'details';
-        if (!fromHistory) this.updateURL('details', id);
-
-        const hero = document.getElementById('detailHero');
-        const bgImage = item.backdrop || item.poster;
-        hero.style.backgroundImage = `url('${bgImage}')`;
-
-        document.getElementById('detailPoster').src = item.poster;
-        document.getElementById('detailTitle').textContent = item.title;
-        document.getElementById('detailDesc').textContent = item.description || "No description available.";
-        document.getElementById('detailYear').textContent = item.year || "N/A";
-        document.getElementById('detailRating').innerHTML = `<i class="fas fa-star"></i> ${item.rating || "N/A"}`;
-        document.getElementById('detailGenre').textContent = item.genre || item.type.toUpperCase();
-
-        const playBtn = document.getElementById('detailPlayBtn');
-        const listBtn = document.getElementById('detailListBtn');
-
-        // Reset text
-        playBtn.innerHTML = '<i class="fas fa-play"></i> Watch Now';
-        // If progress exists, change text
-        if (this.progress[item.id]) {
-            playBtn.innerHTML = '<i class="fas fa-play"></i> Resume';
-        }
-
-        playBtn.onclick = () => this.playActiveMovie();
-        this.updateDetailListBtn(item.id);
-        listBtn.onclick = () => { this.toggleMyList(item.id); this.updateDetailListBtn(item.id); };
-
-        this.cancelEdit();
-        this.fetchReviews(id);
-        this.updateReviewUI(!!this.user);
-
-        this.renderRelated(item.type, item.id, 'detailRelatedGrid');
-
-        this.switchView('detailsPage');
-    }
-
-    updateDetailListBtn(id) { const btn = document.getElementById('detailListBtn'); if (this.myList.includes(id)) { btn.innerHTML = '<i class="fas fa-check"></i> Added'; btn.classList.add('btn-light'); btn.classList.remove('btn-outline-light'); } else { btn.innerHTML = '<i class="far fa-heart"></i> My List'; btn.classList.add('btn-outline-light'); btn.classList.remove('btn-light'); } }
-
-    setupPlayerUI() {
-        const playerPage = document.getElementById('playerPage');
-        if (!playerPage) return;
-
-        const showUI = () => {
-            playerPage.classList.remove('player-ui-hidden');
-            this.resetPlayerUiTimer();
-        };
-
-        playerPage.onmousemove = showUI;
-        playerPage.ontouchstart = showUI;
-        playerPage.onclick = showUI;
-
-        this.resetPlayerUiTimer();
-    }
-
-    resetPlayerUiTimer() {
-        this.stopPlayerUiTimer();
-        this.playerUiTimeout = setTimeout(() => {
-            const playerPage = document.getElementById('playerPage');
-            if (playerPage && this.currentView === 'player') {
-                playerPage.classList.add('player-ui-hidden');
-            }
-        }, 3000);
-    }
-
-    stopPlayerUiTimer() {
-        if (this.playerUiTimeout) {
-            clearTimeout(this.playerUiTimeout);
-            this.playerUiTimeout = null;
-        }
-    }
-
-    playActiveMovie() {
-        if (!this.activeContent) return;
-        const item = this.activeContent;
-        const controls = document.getElementById('seriesControls');
-        const playerTitle = document.getElementById('playerTitle');
-
-        this.switchView('playerPage');
-        this.currentView = 'player';
-        this.updateURL('player', item.id); // Update URL on play
-
-        this.setupPlayerUI();
-
-        // Mobile Fullscreen Auto
-        if (window.innerWidth < 768) {
-            this.enterFullscreenAndRotate();
-        }
-
-        if (playerTitle) playerTitle.textContent = `Now Watching: ${item.title}`;
-
-        const prog = this.progress[item.id];
-
-        // Handle Series
-        if (item.type === 'series' || (item.seasons && item.seasons.length > 0)) {
-            controls.classList.remove('hidden');
-            const sSelect = document.getElementById('seasonSelect');
-            const eSelect = document.getElementById('episodeSelect');
-
-            if (item.seasons && item.seasons.length > 0) {
-                // Populate Seasons
-                sSelect.innerHTML = item.seasons.map(s => `<option value="${s.seasonNumber || 1}">Season ${s.seasonNumber || 1}</option>`).join('');
-
-                // Restore season if saved
-                if (prog && prog.season) {
-                    sSelect.value = prog.season;
-                }
-
-                // Trigger change to populate episodes
-                this.onSeasonChange();
-
-                // Restore specific episode
-                if (prog && prog.episodeUrl) {
-                    eSelect.value = prog.episodeUrl;
-                }
-
-                // Play
-                this.playEpisode();
-            }
-        } else {
-            // Movies
-            controls.classList.add('hidden');
-            this.setPlayerSource(item.videoUrl);
-        }
-    }
-
-    renderNewContent() { const container = document.getElementById('newContentGrid'); if (!container) return; const all = [...this.movies, ...this.series].sort((a, b) => b.year - a.year).slice(0, 6); container.innerHTML = all.map(i => this.createCard(i)).join(''); }
 
     renderHeroCarousel() {
         const indicators = document.getElementById('heroIndicators');
@@ -1252,15 +1621,17 @@ class OussaStreamApp {
         const section = document.getElementById('continueWatchingSection');
         if (!container || !section) return;
 
-        // Combine movies and series to find items
-        const allContent = [...this.movies, ...this.series];
+        // Ensure data is loaded
+        const all = [...this.movies, ...this.series];
+        if (all.length === 0) return;
 
-        // Get IDs sorted by lastUpdated (Newest first)
+        // Get IDs that have progress, sorted by last updated
         const progressIds = Object.keys(this.progress).sort((a, b) => {
             return (this.progress[b].lastUpdated || 0) - (this.progress[a].lastUpdated || 0);
         });
 
-        const list = progressIds.map(id => allContent.find(item => item.id === id)).filter(Boolean);
+        // Map IDs to actual content objects
+        const list = progressIds.map(id => all.find(item => item.id === id)).filter(Boolean);
 
         if (list.length > 0) {
             section.classList.remove('hidden');
@@ -1270,103 +1641,44 @@ class OussaStreamApp {
         }
     }
 
-    renderMyList() { const container = document.getElementById('myListGrid'); if (!container) return; const all = [...this.movies, ...this.series]; const listItems = all.filter(item => this.myList.includes(item.id)); container.innerHTML = listItems.length > 0 ? listItems.map(i => this.createCard(i)).join('') : '<p class="text-center w-100 mt-5 text-gray-small">List is empty.</p>'; }
+    renderMyList() {
+        const container = document.getElementById('myListGrid');
+        if (!container) return;
 
-    renderRelated(genre, currentId, containerId = 'relatedGrid') { const container = document.getElementById(containerId); if (!container) return; const all = [...this.movies, ...this.series]; const related = all.filter(item => item.id !== currentId && item.type.toLowerCase() === genre.toLowerCase()).slice(0, 4); container.innerHTML = related.map(i => this.createCard(i)).join(''); }
+        const all = [...this.movies, ...this.series];
+        const listItems = all.filter(item => this.myList.includes(item.id));
 
-    handlePopState(event) { if (event.state) { const view = event.state.view; if (view === 'details' && event.state.id) { this.openDetails(event.state.id, true); } else if (view === 'movies') { this.showMovies(true); } else if (view === 'series') { this.showSeries(true); } else if (view === 'mylist') { this.showMyList(true); } else { this.showHome(true); } } else { this.showHome(true); } }
-
-    updateURL(view, id = null) { let url = `?view=${view}`; if (id) url += `&id=${id}`; const state = { view, id }; history.pushState(state, '', url); }
-
-    goBack() {
-        if (this.currentView === 'player') {
-            this.closePlayer();
-        } else {
-            // Check history, if empty or external, go home
-            if (window.history.length > 1) {
-                history.back();
-            } else {
-                this.showHome();
-            }
-        }
+        container.innerHTML = listItems.length > 0
+            ? listItems.map(i => this.createCard(i)).join('')
+            : '<p class="text-center w-100 mt-5 text-gray-small">List is empty.</p>';
     }
 
-    showToast(msg) { const container = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = 'custom-toast'; toast.textContent = msg; container.appendChild(toast); setTimeout(() => toast.remove(), 3500); }
+    renderRelated(genre, currentId, containerId = 'detailRelatedGrid') {
+        const container = document.getElementById(containerId);
+        if (!container) return;
 
-    handleNavbarScroll() { const nav = document.getElementById('mainNavbar'); window.onscroll = () => nav.classList.toggle('scrolled', window.scrollY > 80); }
+        const all = [...this.movies, ...this.series];
+        const related = all.filter(item => item.id !== currentId && item.type.toLowerCase() === genre.toLowerCase()).slice(0, 4);
 
-    setupSearch() { const input = document.getElementById('searchInput'); if (input) input.addEventListener('input', () => { if (this.currentView !== 'movies' && this.currentView !== 'series') { this.showMovies(); } if (this.currentCatalogType === 'movie') this.renderCatalog('movie'); else if (this.currentCatalogType === 'series') this.renderCatalog('series'); }); }
-
-    setPlayerSource(url) {
-        const embedPlayer = document.querySelector('#playerPage iframe');
-        const plyrContainer = document.querySelector('#playerPage .plyr');
-        const rawVideo = document.getElementById('player');
-
-        if (!url) {
-            this.showToast("Error: Video link missing");
-            return;
-        }
-
-        const isEmbed = url.includes('/e/') || url.includes('myvidplay') || url.includes('dood') || url.includes('pixel');
-
-        if (isEmbed) {
-            if (this.player) this.player.stop();
-            if (plyrContainer) plyrContainer.style.display = 'none';
-            if (rawVideo) rawVideo.style.display = 'none';
-            if (embedPlayer) {
-                embedPlayer.classList.remove('hidden');
-                embedPlayer.style.display = 'block';
-                embedPlayer.src = url;
-            }
-        } else {
-            if (embedPlayer) {
-                embedPlayer.classList.add('hidden');
-                embedPlayer.style.display = 'none';
-                embedPlayer.src = '';
-            }
-            if (plyrContainer) plyrContainer.style.display = 'block';
-            if (rawVideo) rawVideo.style.display = 'block';
-
-            const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
-            this.player.source = {
-                type: 'video',
-                sources: [{ src: url, provider: isYouTube ? 'youtube' : 'html5' }]
-            };
-            setTimeout(() => this.player.play(), 500);
-        }
+        container.innerHTML = related.map(i => this.createCard(i)).join('');
     }
 
-    onSeasonChange() {
-        const sNum = parseInt(document.getElementById('seasonSelect').value);
-        const eSelect = document.getElementById('episodeSelect');
+    // ==========================================
+    // 20. UTILITY FUNCTIONS
+    // ==========================================
 
-        if (!this.activeContent.seasons) return;
-
-        const season = this.activeContent.seasons.find(s => (s.seasonNumber || 1) === sNum);
-
-        if (season) {
-            eSelect.innerHTML = season.episodes.map(e => `<option value="${e.videoUrl}">E${e.episodeNumber}: ${e.title}</option>`).join('');
-        }
+    showToast(msg) {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = 'custom-toast';
+        toast.textContent = msg;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 3500);
     }
 
-    playEpisode() { const url = document.getElementById('episodeSelect').value; if (url) this.setPlayerSource(url); }
-
-    closePlayer() {
-        if (this.player) this.player.stop();
-        const embedPlayer = document.querySelector('#playerPage iframe');
-        if (embedPlayer) embedPlayer.src = '';
-        this.exitFullscreenAndRotate();
-        this.stopPlayerUiTimer();
-        document.body.style.overflow = 'auto';
-
-        if (this.activeContent) {
-            this.currentView = 'details';
-            this.switchView('detailsPage');
-            // Update URL back to details
-            this.updateURL('details', this.activeContent.id);
-        } else {
-            this.showHome();
-        }
+    handleNavbarScroll() {
+        const nav = document.getElementById('mainNavbar');
+        window.onscroll = () => nav.classList.toggle('scrolled', window.scrollY > 80);
     }
 
     updateUI() {
@@ -1375,4 +1687,5 @@ class OussaStreamApp {
     }
 }
 
+// Start Application
 const app = new OussaStreamApp();
