@@ -81,6 +81,7 @@ class OussaStreamApp {
     init() {
         console.log("Initializing OussaStream...");
 
+        this.setupProtection(); // <--- ADDED: Protection Logic
         this.initAuth();
         this.initPlayer();
         this.fetchData();
@@ -100,6 +101,52 @@ class OussaStreamApp {
                 loader.classList.add('hidden');
             }
         }, 1500);
+    }
+
+    // ==========================================
+    // 2.1 PROTECTION LOGIC (Security)
+    // ==========================================
+    setupProtection() {
+        // 1. Disable Context Menu (Right Click)
+        document.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            return false;
+        });
+
+        // 2. Disable Keyboard Shortcuts (Inspector, Source, Save)
+        document.addEventListener('keydown', (e) => {
+            // F12
+            if (e.key === 'F12') {
+                e.preventDefault();
+                return false;
+            }
+            // Ctrl+Shift+I (Inspect), Ctrl+Shift+J (Console), Ctrl+Shift+C (Element)
+            if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) {
+                e.preventDefault();
+                return false;
+            }
+            // Ctrl+U (View Source)
+            if (e.ctrlKey && e.key === 'u') {
+                e.preventDefault();
+                return false;
+            }
+            // Ctrl+S (Save Page)
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                return false;
+            }
+            // Ctrl+P (Print)
+            if (e.ctrlKey && e.key === 'p') {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // 3. Disable Dragging Images
+        document.addEventListener('dragstart', (e) => {
+            e.preventDefault();
+            return false;
+        });
     }
 
     // ==========================================
