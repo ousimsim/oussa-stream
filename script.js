@@ -1,17 +1,46 @@
 /**
- * ====================================================================
- * PROJECT: OussaStream - Streaming Platform
- * FILE: script.js
- * DESCRIPTION: Main application logic handling Auth, Player, Data, Reviews.
- * AUTHOR: Oussama Ait Salem
- * VERSION: 2.0 (Full Expanded)
- * ====================================================================
+ * ==========================================================================================
+ * OUSSASTREAM - CORE APPLICATION LOGIC
+ * ==========================================================================================
+ * * PROJECT:        OussaStream - Premium Streaming Platform
+ * FILE:           script.js
+ * VERSION:        3.5 (Stable - Timestamp Fix)
+ * AUTHOR:         Oussama Ait Salem
+ * DESCRIPTION:    
+ * This is the main engine for the OussaStream Single Page Application (SPA).
+ * It orchestrates authentication, data fetching, routing, player management, 
+ * review interactions, and security protocols.
+ * * TABLE OF CONTENTS:
+ * ------------------------------------------------------------------------------------------
+ * 1.  CONFIGURATION          - Firebase setup and initialization
+ * 2.  APP CLASS              - Main OussaStreamApp class definition
+ * 3.  INITIALIZATION         - Bootstrapping the application
+ * 4.  SECURITY               - Content protection logic
+ * 5.  ROUTING                - URL handling and history management
+ * 6.  AUTHENTICATION         - User session handling (Guest vs User)
+ * 7.  USER DATA              - Fetching profiles, lists, and history
+ * 8.  AUTH MODALS            - UI logic for Login/Signup forms
+ * 9.  PROFILE MANAGEMENT     - Avatar uploads and profile updates
+ * 10. CONTENT DATA           - Fetching Movies & Series catalogs
+ * 11. CATALOG LOGIC          - Filtering, Searching, and Sorting
+ * 12. NAVIGATION             - View switching logic
+ * 13. UI RENDERING           - Card generation and DOM manipulation
+ * 14. DETAILS PAGE           - Movie/Series details view logic
+ * 15. PLAYER SYSTEM          - Video playback, controls, and events
+ * 16. REVIEWS SYSTEM         - Realtime reviews with Permission Fixes
+ * 17. UTILITIES              - Helper functions and Tools
+ * ==========================================================================================
  */
 
-// ====================================================================
+
+// ==========================================================================================
 // 1. FIREBASE CONFIGURATION
-// ====================================================================
-// Replace these values with your actual Firebase project credentials
+// ==========================================================================================
+
+/**
+ * Firebase Configuration Object
+ * These keys connect the client to the Firebase backend services.
+ */
 const firebaseConfig = {
     apiKey: "AIzaSyAMxFcc8nt3RgsodtGBUw-jYEZu6Ui4NIA",
     authDomain: "oussastream.firebaseapp.com",
@@ -22,128 +51,172 @@ const firebaseConfig = {
     appId: "1:12799093969:web:fc044c5c7b3c78a1e3e9f0"
 };
 
-// Initialize Firebase only if it hasn't been initialized yet
+/**
+ * Initialize Firebase
+ * Prevents multiple initialization errors by checking the apps array length.
+ */
 if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-    console.log("Firebase Initialized Successfully.");
+    try {
+        firebase.initializeApp(firebaseConfig);
+        console.log(" [System] Firebase Initialized Successfully.");
+    } catch (error) {
+        console.error(" [System] Firebase Initialization Error:", error);
+    }
 } else {
-    console.log("Firebase already initialized.");
+    console.log(" [System] Firebase already initialized.");
 }
 
-// ====================================================================
-// 2. MAIN APPLICATION CLASS
-// ====================================================================
+
+// ==========================================================================================
+// 2. MAIN APPLICATION CLASS DEFINITION
+// ==========================================================================================
+
 class OussaStreamApp {
-    
+
     /**
-     * Constructor: Initializes state variables and references.
+     * Constructor
+     * Initializes the application state, binds methods, and prepares the environment.
      */
     constructor() {
-        // --- Firebase References ---
+        console.log(" [App] Constructing Application Instance...");
+
+        // ----------------------------------------------------------------
+        // Firebase Services References
+        // ----------------------------------------------------------------
         this.db = firebase.database();
         this.auth = firebase.auth();
 
-        // --- User State ---
-        this.user = null;           // Current logged-in user object
-        this.avatar = null;         // User avatar URL
-        this.tempAvatarData = null; // Temporary avatar data during upload
+        // ----------------------------------------------------------------
+        // User Session State
+        // ----------------------------------------------------------------
+        this.user = null;           // Holds the current Firebase User object
+        this.avatar = null;         // Holds the current user's avatar URL
+        this.tempAvatarData = null; // Temporary storage for avatar preview during upload
 
-        // --- Content Data Containers ---
+        // ----------------------------------------------------------------
+        // Content Data Stores (Cache)
+        // ----------------------------------------------------------------
         this.movies = [];           // Array to store fetched movies
         this.series = [];           // Array to store fetched series
-        
-        // --- User Specific Data (Favorites & Progress) ---
-        this.myList = [];           // User's favorites list (IDs)
-        this.progress = {};         // Watch progress tracking { id: {time, percent...} }
-        
-        // --- Performance & Throttling ---
-        this.lastSaveTime = 0;      // Timestamp to throttle database writes
 
-        // --- Review System State ---
-        this.activeReviews = [];    // Cache for reviews of the current content
-        this.editingReviewId = null;// ID of the review currently being edited
-        this.currentReviewsRef = null; // Reference to current reviews listener (to detach later)
+        // ----------------------------------------------------------------
+        // User Personal Data
+        // ----------------------------------------------------------------
+        this.myList = [];           // Array of Content IDs in User's Favorites
+        this.progress = {};         // Object storing watch progress: { contentId: { time, percent } }
 
-        // --- Navigation State ---
-        this.currentView = 'home';  // Current active page ID
-        this.activeContent = null;  // Currently selected movie/series object
-        
-        // --- Player State ---
-        this.player = null;         // Plyr instance
-        this.playerUiTimeout = null;// Timeout for hiding player UI
-        this.nextEpisodeTimer = null;// Timer for auto-playing next episode
+        // ----------------------------------------------------------------
+        // System Performance & Throttling
+        // ----------------------------------------------------------------
+        this.lastSaveTime = 0;      // Timestamp to throttle database writes (Progress saving)
 
-        // --- Pagination & Filters ---
-        this.itemsPerPage = 12;     // Items per page in grid
-        this.currentPage = 1;       // Current page number
-        this.currentCatalogType = 'all'; // 'movie', 'series', or 'all'
-        this.activeFilters = { 
-            genre: 'all', 
-            year: 'all', 
-            sort: 'newest' 
+        // ----------------------------------------------------------------
+        // Review System State
+        // ----------------------------------------------------------------
+        this.activeReviews = [];    // Array of reviews for the currently open details page
+        this.editingReviewId = null;// ID of the review currently being edited (null if new)
+        this.currentReviewsRef = null; // Reference to the active DB listener for reviews
+
+        // ----------------------------------------------------------------
+        // Navigation & Routing State
+        // ----------------------------------------------------------------
+        this.currentView = 'home';  // Current active view ID (e.g., 'home', 'details', 'player')
+        this.activeContent = null;  // The Content Object currently being viewed or played
+
+        // ----------------------------------------------------------------
+        // Player State Management
+        // ----------------------------------------------------------------
+        this.player = null;         // Reference to the Plyr instance
+        this.playerUiTimeout = null;// Timer ID for hiding player controls
+        this.nextEpisodeTimer = null;// Timer ID for auto-playing next episode
+
+        // ----------------------------------------------------------------
+        // Pagination & Filtering Configuration
+        // ----------------------------------------------------------------
+        this.itemsPerPage = 12;     // Number of items to show per page in catalog
+        this.currentPage = 1;       // Current active page in catalog
+        this.currentCatalogType = 'all'; // Current filter type ('movie', 'series', 'all')
+
+        // Active Filter State
+        this.activeFilters = {
+            genre: 'all',
+            year: 'all',
+            sort: 'newest'
         };
 
-        // --- Auth Modal State ---
-        this.isLoginMode = true;    // True = Sign In, False = Sign Up
-        this.isResetMode = false;   // True = Password Reset Mode
-        
-        // --- Event Listeners ---
-        // Handle browser Back/Forward buttons
+        // ----------------------------------------------------------------
+        // UI Modal States
+        // ----------------------------------------------------------------
+        this.isLoginMode = true;    // Toggle between Login form and Sign Up form
+        this.isResetMode = false;   // Toggle for Password Reset form
+
+        // ----------------------------------------------------------------
+        // Global Event Binding
+        // ----------------------------------------------------------------
+
+        // Bind the back/forward browser button handler to the class instance
         window.onpopstate = (event) => {
             this.handlePopState(event);
         };
 
-        // Start the application
+        // Launch the application initialization sequence
         this.init();
     }
 
+
+    // ==========================================================================================
+    // 3. INITIALIZATION & BOOTSTRAPPING
+    // ==========================================================================================
+
     /**
-     * Main Initialization Function
-     * Sets up listeners, protection, and loads initial data.
+     * init()
+     * The main entry point. Sets up protections, listeners, and triggers initial data fetching.
      */
     init() {
-        console.log("Initializing OussaStream Application...");
-        
-        // 1. Setup Content Protection (Anti-Copy/Inspect)
-        this.setupProtection(); 
+        console.log(" [App] Initializing OussaStream...");
 
-        // 2. Initialize Authentication Listener
-        this.initAuth(); 
+        // 1. Enforce Content Protection (No Right Click, No Inspector)
+        this.setupProtection();
 
-        // 3. Initialize Video Player (Plyr)
+        // 2. Start Authentication Listener
+        this.initAuth();
+
+        // 3. Initialize Player Components
         this.initPlayer();
 
-        // 4. Fetch Movies and Series Data
-        this.fetchData(); 
-        
-        // 5. Setup UI Event Listeners
+        // 4. Begin fetching Content Data (Movies & Series)
+        this.fetchData();
+
+        // 5. Setup Global UI Event Listeners (Scroll, Search, Filter)
         this.handleNavbarScroll();
         this.setupSearch();
         this.setupFilters();
         this.setupFullscreenListener();
 
-        // 6. Handle URL parameters (Deep Linking & Persistence)
+        // 6. Handle Direct Links & Persistence (Refresh handling)
         this.handleInitialRouting();
 
-        // 7. Remove Loading Screen after delay
+        // 7. Remove Loading Screen (Simulate loading time for smooth UX)
         setTimeout(() => {
             const loader = document.getElementById('loadingOverlay');
             if (loader) {
                 loader.classList.add('hidden');
-                console.log("Loading overlay removed.");
+                console.log(" [UI] Loading overlay removed.");
             }
         }, 1500);
     }
 
-    // ====================================================================
-    // 3. SECURITY & PROTECTION
-    // ====================================================================
+
+    // ==========================================================================================
+    // 4. SECURITY & CONTENT PROTECTION MODULE
+    // ==========================================================================================
 
     /**
-     * Prevents right-click, keyboard shortcuts for inspection, and dragging.
+     * setupProtection()
+     * Adds event listeners to prevent content theft, inspection, and unauthorized copying.
      */
     setupProtection() {
-        console.log("Setting up content protection...");
+        console.log(" [Security] Enabling content protection measures...");
 
         // Disable Context Menu (Right Click)
         document.addEventListener('contextmenu', (event) => {
@@ -151,9 +224,9 @@ class OussaStreamApp {
             return false;
         });
 
-        // Disable specific Keyboard Shortcuts
+        // Disable Keyboard Shortcuts for Developer Tools and Source Viewing
         document.addEventListener('keydown', (event) => {
-            // Block F12 (DevTools)
+            // Block F12 (Standard DevTools)
             if (event.key === 'F12') {
                 event.preventDefault();
                 return false;
@@ -168,7 +241,7 @@ class OussaStreamApp {
                 event.preventDefault();
                 return false;
             }
-            // Block Ctrl+Shift+C (Element Selector)
+            // Block Ctrl+Shift+C (Element Inspector)
             if (event.ctrlKey && event.shiftKey && event.key === 'C') {
                 event.preventDefault();
                 return false;
@@ -190,59 +263,80 @@ class OussaStreamApp {
             }
         });
 
-        // Disable Dragging of Images
+        // Disable Dragging of Images (Visual Protection)
         document.addEventListener('dragstart', (event) => {
             event.preventDefault();
             return false;
         });
+
+        console.log(" [Security] Protection Active.");
     }
 
-    // ====================================================================
-    // 4. ROUTING & STATE PERSISTENCE
-    // ====================================================================
+
+    // ==========================================================================================
+    // 5. ROUTING & STATE PERSISTENCE MODULE
+    // ==========================================================================================
 
     /**
-     * Saves the current view and content ID to localStorage.
-     * Allows the user to stay on the same page after refresh.
+     * saveAppState()
+     * Persists the current navigation state to localStorage.
+     * This allows the user to refresh the page and stay on the same movie/series.
      */
     saveAppState() {
         const state = {
             view: this.currentView,
             id: this.activeContent ? this.activeContent.id : null
         };
-        localStorage.setItem('oussaStreamLastState', JSON.stringify(state));
+
+        // We use localStorage because it persists even if the browser is closed and reopened
+        try {
+            localStorage.setItem('oussaStreamLastState', JSON.stringify(state));
+        } catch (e) {
+            console.warn(" [Routing] Failed to save app state:", e);
+        }
     }
 
     /**
-     * Reads URL parameters or localStorage to determine the initial view.
+     * handleInitialRouting()
+     * Determines which page to show when the app first loads.
+     * Priority: URL Parameters > LocalStorage > Default (Home).
      */
     handleInitialRouting() {
         const params = new URLSearchParams(window.location.search);
         let view = params.get('view');
         let id = params.get('id');
 
-        // If no URL params, try to recover session from localStorage
+        // If URL parameters are missing, try to restore from localStorage
         if (!view) {
-            const savedState = JSON.parse(localStorage.getItem('oussaStreamLastState'));
-            if (savedState) {
-                view = savedState.view;
-                id = savedState.id;
+            const savedStateStr = localStorage.getItem('oussaStreamLastState');
+            if (savedStateStr) {
+                try {
+                    const savedState = JSON.parse(savedStateStr);
+                    if (savedState) {
+                        view = savedState.view;
+                        id = savedState.id;
+                    }
+                } catch (e) {
+                    console.error(" [Routing] Failed to parse saved state", e);
+                }
             }
         }
 
-        console.log(`Routing to: View=${view}, ID=${id}`);
+        console.log(` [Routing] Initial Route -> View: ${view}, ID: ${id}`);
 
+        // Routing Logic
         if (view) {
             if (view === 'details' && id) {
-                // Wait slightly for data to be fetched before opening details
+                // We add a slight delay to ensure data fetching has initiated
                 setTimeout(() => {
                     this.openDetails(id, true);
-                }, 1000); 
+                }, 1000);
             } else if (view === 'player' && id) {
-                 // If saved on player, go to details first to ensure context is loaded
-                 setTimeout(() => {
-                     this.openDetails(id, true);
-                 }, 1000);
+                // For player, we route to details first to establish context, then user plays manually
+                // This avoids playing video without user interaction (browser policy)
+                setTimeout(() => {
+                    this.openDetails(id, true);
+                }, 1000);
             } else if (view === 'movies') {
                 this.showMovies(true);
             } else if (view === 'series') {
@@ -251,18 +345,22 @@ class OussaStreamApp {
                 this.showMyList(true);
             }
         }
+        // If no view is determined, the default 'home' set in constructor applies.
     }
 
     /**
-     * Handles the browser's Back and Forward button events.
+     * handlePopState(event)
+     * Handles the browser's Back/Forward navigation actions.
      */
     handlePopState(event) {
         if (event.state) {
             const view = event.state.view;
             const id = event.state.id;
 
+            console.log(` [Routing] PopState detected -> View: ${view}`);
+
             if (view === 'details' && id) {
-                this.openDetails(id, true);
+                this.openDetails(id, true); // true = don't push state again
             } else if (view === 'movies') {
                 this.showMovies(true);
             } else if (view === 'series') {
@@ -273,115 +371,140 @@ class OussaStreamApp {
                 this.showHome(true);
             }
         } else {
+            // Default fallback if no state exists
             this.showHome(true);
         }
     }
 
     /**
-     * Updates the Browser URL without reloading.
+     * updateURL(view, id)
+     * Updates the browser's address bar without reloading the page.
+     * Also saves the state for persistence.
      */
     updateURL(view, id = null) {
         let url = `?view=${view}`;
         if (id) {
             url += `&id=${id}`;
         }
-        
+
         const state = { view, id };
         history.pushState(state, '', url);
-        
-        // Also save to local storage for persistence
+
+        // Save to storage immediately
         this.saveAppState();
     }
 
-    // ====================================================================
-    // 5. AUTHENTICATION & DATA ISOLATION
-    // ====================================================================
+
+    // ==========================================================================================
+    // 6. AUTHENTICATION & DATA ISOLATION MODULE
+    // ==========================================================================================
 
     /**
+     * initAuth()
      * Sets up the Firebase Auth State Observer.
-     * Manages logic for Logged-In Users vs Guests.
+     * This is the core of the Data Isolation logic (Guest vs User).
      */
     initAuth() {
         this.auth.onAuthStateChanged((user) => {
             if (user) {
-                // --- LOGGED IN USER ---
-                console.log("User Logged In:", user.uid);
+                // -----------------------
+                // LOGGED IN USER LOGIC
+                // -----------------------
+                console.log(" [Auth] User Logged In:", user.uid);
                 this.user = user;
-                
-                // Clear any guest data from memory
+
+                // Clear any Guest data from memory to prevent mixing
                 this.myList = [];
-                this.progress = {}; 
-                
+                this.progress = {};
+
+                // Update UI to show User Avatar
                 this.updateAuthUI(true);
-                // Load user-specific data from Firebase
-                this.loadUserData(user.uid); 
+
+                // Load User-Specific Data from Firebase
+                this.loadUserData(user.uid);
+
+                // Enable Review Inputs
                 this.updateReviewUI(true);
-                
-                // Display Welcome Toast (only if not initial load)
+
+                // Show Welcome Message (only if not initial page load to avoid spam)
                 const loader = document.getElementById('loadingOverlay');
                 if (loader && loader.classList.contains('hidden')) {
-                     const name = user.displayName || (user.email ? user.email.split('@')[0] : 'User');
-                     this.showToast(`Welcome back, ${name}!`);
+                    const name = user.displayName || (user.email ? user.email.split('@')[0] : 'User');
+                    this.showToast(`Welcome back, ${name}!`);
                 }
 
             } else {
-                // --- GUEST (NOT LOGGED IN) ---
-                console.log("Guest Mode Active");
+                // -----------------------
+                // GUEST MODE LOGIC
+                // -----------------------
+                console.log(" [Auth] Guest Mode Active");
                 this.user = null;
                 this.avatar = null;
-                
+
+                // Update UI to show Sign In button
                 this.updateAuthUI(false);
                 this.updateReviewUI(false);
-                
+
                 // Load Guest Data from LocalStorage (Isolated)
                 this.myList = JSON.parse(localStorage.getItem('guest_myList')) || [];
                 this.progress = JSON.parse(localStorage.getItem('guest_progress')) || {};
-                
+
+                // Render UI with Guest Data
                 this.updateUI();
-                // Render Continue Watching for Guest
                 this.renderContinueWatching();
+
+                // Clear any leftover editing state
                 this.cancelEdit();
             }
         });
     }
 
     /**
-     * Fetches user-specific data (Avatar, List, Progress) from Firebase.
+     * loadUserData(uid)
+     * Fetches user-specific data (Avatar, List, Progress) from Firebase Realtime Database.
      */
     loadUserData(uid) {
-        // 1. Load Avatar
+        // 1. Fetch Avatar
         this.db.ref('users/' + uid + '/avatar').on('value', (snap) => {
             this.avatar = snap.val() || null;
             this.updateAuthUI(true);
         });
 
-        // 2. Load My List (Favorites)
+        // 2. Fetch My List (Favorites)
         this.db.ref('users/' + uid + '/myList').on('value', snap => {
             this.myList = snap.val() || [];
+
+            // If on My List page, re-render it to show updated list
             if (this.currentView === 'mylist') {
                 this.renderMyList();
             }
-            // Update UI buttons (Heart icons)
-            this.updateUI(); 
+            // Update heart icons across the app
+            this.updateUI();
         });
 
-        // 3. Load Watch Progress (Continue Watching)
+        // 3. Fetch Watch Progress (Continue Watching)
         this.db.ref('users/' + uid + '/progress').on('value', snap => {
             this.progress = snap.val() || {};
             this.renderContinueWatching();
         });
     }
 
-    // ====================================================================
-    // 6. UI UPDATE HELPERS (AUTH)
-    // ====================================================================
 
+    // ==========================================================================================
+    // 7. UI UPDATE HELPERS (AUTH)
+    // ==========================================================================================
+
+    /**
+     * updateAuthUI(isLoggedIn)
+     * Updates the Navbar Authentication Section (Avatar vs Sign In Button).
+     * Renders a dynamic dropdown if logged in.
+     */
     updateAuthUI(isLoggedIn) {
         const container = document.getElementById('authSection');
         if (!container) return;
 
         if (isLoggedIn && this.user) {
-            // Prepare Avatar HTML
+            // Render Logged In State (Avatar & Dropdown)
             let avatarHtml = '';
             if (this.avatar) {
                 avatarHtml = `<img src="${this.avatar}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;">`;
@@ -390,7 +513,6 @@ class OussaStreamApp {
                 avatarHtml = name.charAt(0).toUpperCase();
             }
 
-            // Render Logged In State (Dropdown)
             container.innerHTML = `
                 <div class="d-flex align-items-center gap-3">
                     <div class="dropdown">
@@ -413,9 +535,10 @@ class OussaStreamApp {
         }
     }
 
-    // ====================================================================
-    // 7. AUTH MODAL LOGIC
-    // ====================================================================
+
+    // ==========================================================================================
+    // 8. AUTH MODAL LOGIC (LOGIN / REGISTER / RESET)
+    // ==========================================================================================
 
     openAuthModal() {
         this.isResetMode = false;
@@ -423,8 +546,8 @@ class OussaStreamApp {
         document.getElementById('authModal').classList.add('show');
     }
 
-    closeAuthModal() { 
-        document.getElementById('authModal').classList.remove('show'); 
+    closeAuthModal() {
+        document.getElementById('authModal').classList.remove('show');
     }
 
     toggleAuthMode() {
@@ -440,6 +563,10 @@ class OussaStreamApp {
         this.updateAuthModalUI();
     }
 
+    /**
+     * updateAuthModalUI()
+     * Dynamically changes the Auth Modal content based on mode (Login, Signup, Reset).
+     */
     updateAuthModalUI() {
         const title = document.getElementById('authTitle');
         const btn = document.getElementById('authSubmitBtn');
@@ -450,6 +577,7 @@ class OussaStreamApp {
         const switchText = document.getElementById('authSwitchText');
 
         if (this.isResetMode) {
+            // Reset Password UI
             title.textContent = 'Reset Password';
             btn.textContent = 'Send Reset Email';
             passGroup.style.display = 'none';
@@ -457,6 +585,7 @@ class OussaStreamApp {
             document.getElementById('authPassword').style.display = 'none';
             forgotLink.textContent = 'Back to Sign In';
         } else {
+            // Login/Signup UI
             document.getElementById('authPassword').style.display = 'block';
             passGroup.style.display = 'block';
             switchContainer.style.display = 'block';
@@ -478,19 +607,24 @@ class OussaStreamApp {
         }
     }
 
+    /**
+     * handleAuth(event)
+     * Processes form submission for Login, Signup, or Reset Password.
+     */
     async handleAuth(event) {
         event.preventDefault();
-        
+
         const email = document.getElementById('authEmail').value;
         const pass = document.getElementById('authPassword').value;
         const btn = document.getElementById('authSubmitBtn');
 
-        // Disable button to prevent double submit
+        // Disable button to prevent double clicks
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Loading...';
 
         try {
             if (this.isResetMode) {
+                // Send Reset Email
                 await this.auth.sendPasswordResetEmail(email);
                 this.showToast("Password reset email sent! Check your inbox.");
                 this.toggleResetMode();
@@ -498,15 +632,21 @@ class OussaStreamApp {
             }
 
             if (this.isLoginMode) {
+                // Sign In
                 await this.auth.signInWithEmailAndPassword(email, pass);
             } else {
+                // Create New Account
                 await this.auth.createUserWithEmailAndPassword(email, pass);
             }
+
+            // Close modal on success
             this.closeAuthModal();
+
         } catch (error) {
             console.error("Auth Error:", error);
             this.showToast(error.message);
         } finally {
+            // Re-enable button
             btn.disabled = false;
             this.updateAuthModalUI();
         }
@@ -516,13 +656,14 @@ class OussaStreamApp {
         this.auth.signOut();
         this.showToast("Signed out successfully.");
         this.closeProfileModal();
-        // Clear persistence
-        localStorage.removeItem('oussaStreamLastState'); 
+        // Clear session persistence
+        localStorage.removeItem('oussaStreamLastState');
     }
 
-    // ====================================================================
-    // 8. PROFILE & AVATAR MANAGEMENT
-    // ====================================================================
+
+    // ==========================================================================================
+    // SECTION 9: PROFILE & AVATAR MANAGEMENT
+    // ==========================================================================================
 
     openProfileModal() {
         if (!this.user) return;
@@ -548,15 +689,18 @@ class OussaStreamApp {
         document.getElementById('profileModal').classList.add('show');
     }
 
-    closeProfileModal() { 
-        document.getElementById('profileModal').classList.remove('show'); 
+    closeProfileModal() {
+        document.getElementById('profileModal').classList.remove('show');
     }
 
+    /**
+     * Handles file input change for avatar upload.
+     */
     handleAvatarSelect(event) {
         const file = event.target.files[0];
         if (!file) return;
 
-        // Limit file size to 2MB
+        // Size Validation (2MB)
         if (file.size > 2 * 1024 * 1024) {
             this.showToast("Image too large. Max 2MB.");
             return;
@@ -564,12 +708,12 @@ class OussaStreamApp {
 
         const reader = new FileReader();
         reader.onload = (e) => {
-            // Resize logic to optimize DB usage
+            // Resize Image using Canvas before storing (Client-Side Compression)
             this.resizeImage(e.target.result, 150, 150, (resizedDataUrl) => {
                 this.tempAvatarData = resizedDataUrl;
                 const img = document.getElementById('profileAvatarImg');
                 const letter = document.getElementById('profileAvatarLetter');
-                
+
                 img.src = resizedDataUrl;
                 img.style.display = 'block';
                 letter.style.display = 'none';
@@ -579,7 +723,7 @@ class OussaStreamApp {
     }
 
     /**
-     * Resizes an image on client-side using Canvas
+     * Utility: Resizes image to fit specific dimensions using HTML5 Canvas.
      */
     resizeImage(base64, maxWidth, maxHeight, callback) {
         const img = new Image();
@@ -588,23 +732,27 @@ class OussaStreamApp {
             const canvas = document.createElement('canvas');
             let width = img.width;
             let height = img.height;
-            
+
+            // Maintain Aspect Ratio
             if (width > height) {
                 if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; }
             } else {
                 if (height > maxHeight) { width *= maxHeight / height; height = maxHeight; }
             }
-            
+
             canvas.width = width;
             canvas.height = height;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
-            
-            // Output as JPEG with 70% quality
-            callback(canvas.toDataURL('image/jpeg', 0.7)); 
+
+            // Output as JPEG with 70% Quality
+            callback(canvas.toDataURL('image/jpeg', 0.7));
         };
     }
 
+    /**
+     * Processes profile update (Name, Password, Avatar).
+     */
     async handleProfileUpdate(event) {
         event.preventDefault();
         const name = document.getElementById('profileName').value;
@@ -612,27 +760,31 @@ class OussaStreamApp {
 
         try {
             const updates = [];
-            
+
+            // Update Display Name
             if (name && name !== this.user.displayName) {
                 updates.push(this.user.updateProfile({ displayName: name }));
             }
+
+            // Update Password
             if (password) {
                 updates.push(this.user.updatePassword(password));
             }
 
+            // Execute Updates
             if (updates.length > 0) {
                 await Promise.all(updates);
                 this.showToast("Profile Updated!");
             }
 
-            // Upload Avatar to Firebase
+            // Upload Avatar if changed
             if (this.tempAvatarData) {
                 await this.db.ref('users/' + this.user.uid + '/avatar').set(this.tempAvatarData);
                 this.showToast("Avatar Updated!");
-                // Sync Reviews with new Avatar
+                // Also update user info in existing reviews
                 this.updateUserReviews(this.user.uid, name || this.user.displayName, this.tempAvatarData);
             } else if (name && name !== this.user.displayName) {
-                // Sync Reviews with new Name only
+                // Update reviews if only name changed
                 this.updateUserReviews(this.user.uid, name, this.avatar);
             }
 
@@ -640,6 +792,7 @@ class OussaStreamApp {
             this.updateAuthUI(true);
 
         } catch (error) {
+            // Sensitive operation check
             if (error.code === 'auth/requires-recent-login') {
                 this.showToast("Security: Please sign in again to change password.");
                 this.logout();
@@ -650,16 +803,19 @@ class OussaStreamApp {
     }
 
     /**
-     * Updates user details in old reviews (Name/Avatar) to keep consistency
+     * Syncs user details (Name/Avatar) across all reviews when profile changes.
+     * Prevents old reviews from showing outdated info.
      */
     updateUserReviews(userId, newName, newAvatar) {
         this.db.ref('reviews').once('value', (snapshot) => {
             const allReviews = snapshot.val();
             if (!allReviews) return;
             const updates = {};
-            
+
+            // Iterate all content reviews
             Object.keys(allReviews).forEach(movieId => {
                 const movieReviews = allReviews[movieId];
+                // Iterate all reviews for content
                 Object.keys(movieReviews).forEach(reviewId => {
                     const review = movieReviews[reviewId];
                     if (review.userId === userId) {
@@ -668,18 +824,19 @@ class OussaStreamApp {
                     }
                 });
             });
-            
+
             if (Object.keys(updates).length > 0) {
                 this.db.ref().update(updates)
-                    .then(() => console.log("User reviews updated successfully"))
-                    .catch(err => console.error("Failed to sync reviews", err));
+                    .then(() => console.log("User reviews synchronized."))
+                    .catch(err => console.error("Review Sync Error:", err));
             }
         });
     }
 
-    // ====================================================================
-    // 9. DATA HANDLING (Favorites & Progress)
-    // ====================================================================
+
+    // ==========================================================================================
+    // SECTION 10: DATA HANDLING (FAVORITES & WATCH PROGRESS)
+    // ==========================================================================================
 
     toggleMyList(id) {
         const index = this.myList.indexOf(id);
@@ -691,32 +848,39 @@ class OussaStreamApp {
             this.showToast("Added to My List!");
         }
 
+        // Save Logic: Isolated per environment (Auth vs Guest)
         if (this.user) {
-            // Save to Firebase (User)
             this.db.ref('users/' + this.user.uid + '/myList').set(this.myList)
-                .catch(e => console.log("List save failed (permission)"));
+                .catch(e => {
+                    console.error("List save failed:", e);
+                    this.showToast("Permission Denied: Check Database Rules");
+                });
         } else {
-            // Save to LocalStorage (Guest)
             localStorage.setItem('guest_myList', JSON.stringify(this.myList));
         }
 
+        // Refresh UI
         if (this.currentView === 'mylist') {
             this.renderMyList();
         }
         this.updateUI();
     }
 
+    /**
+     * updateProgress(id, time, duration)
+     * Tracks watch time and saves it for "Continue Watching".
+     */
     updateProgress(id, time, duration) {
         if (!duration || duration === 0) return;
-        
+
         const percent = (time / duration) * 100;
         let meta = {};
 
-        // Capture extra meta data for Series (Season/Ep)
-        if(this.activeContent && this.activeContent.type === 'series') {
+        // If Series, capture Season/Episode context
+        if (this.activeContent && this.activeContent.type === 'series') {
             const sSelect = document.getElementById('seasonSelect');
             const eSelect = document.getElementById('episodeSelect');
-            if(sSelect && eSelect) {
+            if (sSelect && eSelect) {
                 meta = {
                     season: sSelect.value,
                     episodeUrl: eSelect.value
@@ -724,65 +888,71 @@ class OussaStreamApp {
             }
         }
 
-        if (percent > 95) { 
-            // If finished (>95%), remove from Continue Watching
-            if (this.progress[id]) delete this.progress[id]; 
-        } else { 
-            // Save progress
-            this.progress[id] = { time, percent, lastUpdated: Date.now(), ...meta }; 
+        // If watched > 95%, assume finished and remove from list
+        if (percent > 95) {
+            if (this.progress[id]) delete this.progress[id];
+        } else {
+            // Save progress with timestamp for sorting "Recently Watched"
+            this.progress[id] = { time, percent, lastUpdated: Date.now(), ...meta };
         }
 
+        // Save Logic
         if (this.user) {
             this.db.ref('users/' + this.user.uid + '/progress').set(this.progress)
-                .catch(e => console.log("Progress save failed"));
+                .catch(e => {
+                    console.error("Progress save failed:", e);
+                    // Don't toast for progress updates to avoid spamming user
+                });
         } else {
             localStorage.setItem('guest_progress', JSON.stringify(this.progress));
-            // Force re-render for guests
+            // Guests need manual re-render as no DB listener triggers it
             this.renderContinueWatching();
         }
     }
 
-    // ====================================================================
-    // 10. PLAYER SYSTEM
-    // ====================================================================
+
+    // ==========================================================================================
+    // SECTION 11: PLAYER INITIALIZATION & LOGIC
+    // ==========================================================================================
 
     initPlayer() {
-        // Initialize Plyr library
-        this.player = new Plyr('#player', { 
+        // Initialize Plyr library with custom controls
+        this.player = new Plyr('#player', {
             controls: [
-                'play-large', 'play', 'progress', 'current-time', 
-                'mute', 'volume', 'captions', 'settings', 'pip', 
+                'play-large', 'play', 'progress', 'current-time',
+                'mute', 'volume', 'captions', 'settings', 'pip',
                 'airplay', 'fullscreen'
             ]
         });
-        
-        // --- RESUME LOGIC ---
+
+        // --- EVENT: Metadata Loaded (RESUME) ---
         this.player.on('loadedmetadata', () => {
             if (this.activeContent && this.progress[this.activeContent.id]) {
                 const savedTime = this.progress[this.activeContent.id].time;
-                if(savedTime > 0) {
+                if (savedTime > 0) {
                     this.player.currentTime = savedTime;
                     this.showToast(`Resumed at ${Math.floor(savedTime / 60)}m`);
                 }
             }
         });
 
-        // --- TIME UPDATE LOGIC ---
+        // --- EVENT: Time Update (PROGRESS & NEXT EPISODE) ---
         this.player.on('timeupdate', () => {
             if (this.activeContent && this.player.duration > 0) {
                 const currentTime = this.player.currentTime;
                 const duration = this.player.duration;
-                
-                // Save progress every 5 seconds (Throttling)
-                if (currentTime - this.lastSaveTime > 5) { 
-                    this.updateProgress(this.activeContent.id, currentTime, duration); 
+
+                // Throttle DB saves to every 5 seconds
+                if (currentTime - this.lastSaveTime > 5) {
+                    this.updateProgress(this.activeContent.id, currentTime, duration);
                     this.lastSaveTime = currentTime;
                 }
 
-                // Show "Next Episode" button if Series
-                if(this.activeContent.type === 'series') {
+                // Check for Series End (Next Episode Prompt)
+                if (this.activeContent.type === 'series') {
                     const remaining = duration - currentTime;
-                    if(remaining <= 40 && remaining > 0) {
+                    // Show prompt if less than 40 seconds remain
+                    if (remaining <= 40 && remaining > 0) {
                         this.showNextEpisodeOverlay();
                     } else {
                         this.hideNextEpisodeOverlay();
@@ -791,22 +961,23 @@ class OussaStreamApp {
             }
         });
 
-        // --- AUTO PLAY NEXT ---
+        // --- EVENT: Video Ended (AUTO PLAY) ---
         this.player.on('ended', () => {
-             if(this.activeContent && this.activeContent.type === 'series') {
-                 this.playNextEpisode();
-             }
+            if (this.activeContent && this.activeContent.type === 'series') {
+                this.playNextEpisode();
+            }
         });
     }
-    
-    // --- NEXT EPISODE HELPERS ---
-    
+
+    // --- NEXT EPISODE UI HANDLERS ---
+
     showNextEpisodeOverlay() {
         const overlay = document.getElementById('nextEpOverlay');
         const nextBtn = document.getElementById('nextEpBtn');
         const nextData = this.findNextEpisode();
-        
-        if(nextData && overlay && !overlay.classList.contains('show')) {
+
+        // Only show overlay if there is actually a next episode
+        if (nextData && overlay && !overlay.classList.contains('show')) {
             overlay.classList.add('show');
             nextBtn.onclick = () => this.playNextEpisode();
         }
@@ -814,32 +985,36 @@ class OussaStreamApp {
 
     hideNextEpisodeOverlay() {
         const overlay = document.getElementById('nextEpOverlay');
-        if(overlay) overlay.classList.remove('show');
+        if (overlay) overlay.classList.remove('show');
     }
 
+    /**
+     * Determines what the next episode is based on current selection.
+     * Returns object { season, episode } or null.
+     */
     findNextEpisode() {
         const sNum = parseInt(document.getElementById('seasonSelect').value);
         const currentUrl = document.getElementById('episodeSelect').value;
         const seasons = this.activeContent.seasons;
 
-        if(!seasons) return null;
+        if (!seasons) return null;
 
         const currentSeason = seasons.find(s => (s.seasonNumber || 1) === sNum);
-        if(!currentSeason) return null;
+        if (!currentSeason) return null;
 
         const currentEpIndex = currentSeason.episodes.findIndex(e => e.videoUrl === currentUrl);
-        
-        // 1. Next episode in same season
-        if(currentEpIndex !== -1 && currentEpIndex < currentSeason.episodes.length - 1) {
+
+        // Scenario 1: Next episode exists in the current season
+        if (currentEpIndex !== -1 && currentEpIndex < currentSeason.episodes.length - 1) {
             return {
                 season: sNum,
                 episode: currentSeason.episodes[currentEpIndex + 1]
             };
-        } 
-        // 2. First episode of next season
+        }
+        // Scenario 2: Jump to first episode of the next season
         else {
             const nextSeason = seasons.find(s => (s.seasonNumber || 1) === sNum + 1);
-            if(nextSeason && nextSeason.episodes.length > 0) {
+            if (nextSeason && nextSeason.episodes.length > 0) {
                 return {
                     season: sNum + 1,
                     episode: nextSeason.episodes[0]
@@ -851,54 +1026,63 @@ class OussaStreamApp {
 
     playNextEpisode() {
         const nextData = this.findNextEpisode();
-        if(nextData) {
+        if (nextData) {
+            // Update UI selectors
             document.getElementById('seasonSelect').value = nextData.season;
-            this.onSeasonChange(); 
+            this.onSeasonChange(); // Refresh episode list for new season
             document.getElementById('episodeSelect').value = nextData.episode.videoUrl;
-            
+
+            // Trigger Play
             this.playEpisode();
             this.hideNextEpisodeOverlay();
             this.showToast(`Playing Season ${nextData.season} Episode ${nextData.episode.episodeNumber}`);
         }
     }
 
-    // ====================================================================
-    // 11. CONTENT DATA FETCHING
-    // ====================================================================
+
+    // ==========================================================================================
+    // SECTION 12: CONTENT DATA FETCHING (REALTIME)
+    // ==========================================================================================
 
     fetchData() {
-        // Fetch Movies
+        // Fetch Movies Collection
         this.db.ref('movies').on('value', snap => {
             const data = snap.val();
+            // Map object to array and ensure type safety
             this.movies = data ? Object.keys(data).map(k => ({ id: k, type: 'movie', ...data[k] })) : [];
+
             this.populateYearFilter();
-            
+
             if (this.currentView === 'movies') this.renderCatalog('movie');
-            
+
+            // Refresh dependent sections
             this.renderContinueWatching();
             this.updateUI();
         });
 
-        // Fetch Series
+        // Fetch Series Collection
         this.db.ref('series').on('value', snap => {
             const data = snap.val();
             this.series = data ? Object.keys(data).map(k => ({ id: k, type: 'series', ...data[k] })) : [];
+
             this.populateYearFilter();
-            
+
             if (this.currentView === 'series') this.renderCatalog('series');
-            
+
             this.renderContinueWatching();
             this.updateUI();
         });
     }
 
-    // ====================================================================
-    // 12. FILTERS & SEARCH
-    // ====================================================================
+
+    // ==========================================================================================
+    // SECTION 13: FILTERS & SEARCH
+    // ==========================================================================================
 
     populateYearFilter() {
         const yearSelect = document.getElementById('yearSelect');
         const allItems = [...this.movies, ...this.series];
+        // Extract unique years using Set, filter nulls, and sort descending
         const years = [...new Set(allItems.map(item => item.year).filter(y => y))].sort((a, b) => b - a);
         yearSelect.innerHTML = '<option value="all">All Years</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
     }
@@ -907,71 +1091,75 @@ class OussaStreamApp {
         const genreSelect = document.getElementById('genreSelect');
         const yearSelect = document.getElementById('yearSelect');
         const sortSelect = document.getElementById('sortSelect');
-        
+
         const applyFilters = () => {
             this.activeFilters.genre = genreSelect.value;
             this.activeFilters.year = yearSelect.value;
             this.activeFilters.sort = sortSelect.value;
+            // Reset to page 1 on filter change
             this.currentPage = 1;
             this.renderCatalog(this.currentCatalogType);
         };
-        
+
         genreSelect.addEventListener('change', applyFilters);
         yearSelect.addEventListener('change', applyFilters);
         sortSelect.addEventListener('change', applyFilters);
     }
 
     setupSearch() {
-        const input = document.getElementById('searchInput'); 
+        const input = document.getElementById('searchInput');
         if (input) {
-            input.addEventListener('input', () => { 
-                if (this.currentView !== 'movies' && this.currentView !== 'series') { 
-                    this.showMovies(); 
-                } 
-                if (this.currentCatalogType === 'movie') this.renderCatalog('movie'); 
-                else if (this.currentCatalogType === 'series') this.renderCatalog('series'); 
-            }); 
+            input.addEventListener('input', () => {
+                // Auto-switch to catalog view if searching from home
+                if (this.currentView !== 'movies' && this.currentView !== 'series') {
+                    this.showMovies();
+                }
+
+                if (this.currentCatalogType === 'movie') this.renderCatalog('movie');
+                else if (this.currentCatalogType === 'series') this.renderCatalog('series');
+            });
         }
     }
 
-    // ====================================================================
-    // 13. VIEW NAVIGATION
-    // ====================================================================
 
-    showHome(fromHistory = false) { 
-        this.currentView = 'home'; 
-        this.switchView('mainContent'); 
-        this.renderContinueWatching(); 
-        if (!fromHistory) this.updateURL('home'); 
+    // ==========================================================================================
+    // SECTION 14: VIEW NAVIGATION & SWITCHING
+    // ==========================================================================================
+
+    showHome(fromHistory = false) {
+        this.currentView = 'home';
+        this.switchView('mainContent');
+        this.renderContinueWatching();
+        if (!fromHistory) this.updateURL('home');
     }
 
-    showMovies(fromHistory = false) { 
-        this.currentView = 'movies'; 
-        this.currentPage = 1; 
-        this.currentCatalogType = 'movie'; 
-        this.resetFiltersUI(); 
-        document.getElementById('pageTitle').textContent = 'Movies'; 
-        this.renderCatalog('movie'); 
-        this.switchView('catalogPage'); 
-        if (!fromHistory) this.updateURL('movies'); 
+    showMovies(fromHistory = false) {
+        this.currentView = 'movies';
+        this.currentPage = 1;
+        this.currentCatalogType = 'movie';
+        this.resetFiltersUI();
+        document.getElementById('pageTitle').textContent = 'Movies';
+        this.renderCatalog('movie');
+        this.switchView('catalogPage');
+        if (!fromHistory) this.updateURL('movies');
     }
 
-    showSeries(fromHistory = false) { 
-        this.currentView = 'series'; 
-        this.currentPage = 1; 
-        this.currentCatalogType = 'series'; 
-        this.resetFiltersUI(); 
-        document.getElementById('pageTitle').textContent = 'TV Series'; 
-        this.renderCatalog('series'); 
-        this.switchView('catalogPage'); 
-        if (!fromHistory) this.updateURL('series'); 
+    showSeries(fromHistory = false) {
+        this.currentView = 'series';
+        this.currentPage = 1;
+        this.currentCatalogType = 'series';
+        this.resetFiltersUI();
+        document.getElementById('pageTitle').textContent = 'TV Series';
+        this.renderCatalog('series');
+        this.switchView('catalogPage');
+        if (!fromHistory) this.updateURL('series');
     }
 
-    showMyList(fromHistory = false) { 
-        this.currentView = 'mylist'; 
-        this.renderMyList(); 
-        this.switchView('myListPage'); 
-        if (!fromHistory) this.updateURL('mylist'); 
+    showMyList(fromHistory = false) {
+        this.currentView = 'mylist';
+        this.renderMyList();
+        this.switchView('myListPage');
+        if (!fromHistory) this.updateURL('mylist');
     }
 
     resetFiltersUI() {
@@ -985,10 +1173,12 @@ class OussaStreamApp {
     switchView(id) {
         document.body.style.overflow = 'auto';
 
+        // Stop player if leaving player page
         if (this.player && id !== 'playerPage') {
             try { this.player.stop(); } catch (e) { }
         }
 
+        // Clear iframes to stop background audio
         const iframes = document.querySelectorAll('iframe');
         iframes.forEach(iframe => {
             if (iframe.id === 'embedPlayer' || iframe.closest('.player-page')) {
@@ -997,6 +1187,8 @@ class OussaStreamApp {
         });
 
         this.stopPlayerUiTimer();
+
+        // Handle Player Page UI specific logic
         const playerPage = document.getElementById('playerPage');
         if (playerPage) {
             playerPage.classList.remove('player-ui-hidden');
@@ -1006,9 +1198,10 @@ class OussaStreamApp {
                 playerPage.onclick = null;
             }
         }
-        
+
         this.hideNextEpisodeOverlay();
 
+        // Toggle visibility of all main sections
         ['mainContent', 'catalogPage', 'myListPage', 'detailsPage', 'playerPage'].forEach(p => {
             const el = document.getElementById(p);
             if (el) el.classList.toggle('hidden', p !== id);
@@ -1022,7 +1215,7 @@ class OussaStreamApp {
         if (this.currentView === 'player') {
             this.closePlayer();
         } else {
-            if(window.history.length > 1) {
+            if (window.history.length > 1) {
                 history.back();
             } else {
                 this.showHome();
@@ -1030,32 +1223,39 @@ class OussaStreamApp {
         }
     }
 
-    // ====================================================================
-    // 14. CATALOG RENDERING
-    // ====================================================================
+
+    // ==========================================================================================
+    // SECTION 15: CATALOG RENDERING & PAGINATION
+    // ==========================================================================================
 
     renderCatalog(typeFilter) {
         const container = document.getElementById('catalogGrid');
         if (!container) return;
-        
+
         let data = typeFilter === 'movie' ? this.movies : this.series;
 
+        // 1. Filter by Search
         const query = document.getElementById('searchInput').value.toLowerCase();
         if (query) {
             data = data.filter(i => i.title.toLowerCase().includes(query));
         }
 
+        // 2. Filter by Genre (Multi-Genre Support)
         if (this.activeFilters.genre !== 'all') {
+            const filter = this.activeFilters.genre.toLowerCase();
             data = data.filter(item => {
-                const itemGenre = (item.genre || item.type || "").toLowerCase();
-                return itemGenre.includes(this.activeFilters.genre.toLowerCase());
+                // Ensure genre is a string and handle array case
+                const genres = String(item.genre || item.type || "").toLowerCase();
+                return genres.includes(filter);
             });
         }
 
-        if (this.activeFilters.year !== 'all') { 
-            data = data.filter(item => item.year == this.activeFilters.year); 
+        // 3. Filter by Year
+        if (this.activeFilters.year !== 'all') {
+            data = data.filter(item => item.year == this.activeFilters.year);
         }
 
+        // 4. Sort Data
         data.sort((a, b) => {
             if (this.activeFilters.sort === 'newest') return (b.year || 0) - (a.year || 0);
             if (this.activeFilters.sort === 'oldest') return (a.year || 0) - (b.year || 0);
@@ -1063,12 +1263,14 @@ class OussaStreamApp {
             return 0;
         });
 
-        if (data.length === 0) { 
-            container.innerHTML = '<div class="col-12 text-center mt-5 text-muted"><h3>No results found.</h3></div>'; 
-            document.getElementById('paginationControls').innerHTML = ''; 
-            return; 
+        // Handle Empty State
+        if (data.length === 0) {
+            container.innerHTML = '<div class="col-12 text-center mt-5 text-muted"><h3>No results found.</h3></div>';
+            document.getElementById('paginationControls').innerHTML = '';
+            return;
         }
 
+        // 5. Pagination Logic
         const totalItems = data.length;
         const totalPages = Math.ceil(totalItems / this.itemsPerPage);
         if (this.currentPage > totalPages) this.currentPage = 1;
@@ -1077,6 +1279,7 @@ class OussaStreamApp {
         const end = start + this.itemsPerPage;
         const paginatedItems = data.slice(start, end);
 
+        // Render Items
         container.innerHTML = paginatedItems.map(i => this.createCard(i)).join('');
         this.renderPaginationControls(totalPages);
     }
@@ -1084,7 +1287,7 @@ class OussaStreamApp {
     renderPaginationControls(totalPages) {
         const controls = document.getElementById('paginationControls');
         if (totalPages <= 1) { controls.innerHTML = ''; return; }
-        
+
         controls.innerHTML = `
             <button class="page-btn" onclick="app.changePage(-1)" ${this.currentPage === 1 ? 'disabled' : ''}>
                 <i class="fas fa-chevron-left"></i> Prev
@@ -1096,10 +1299,10 @@ class OussaStreamApp {
         `;
     }
 
-    changePage(direction) { 
-        this.currentPage += direction; 
-        this.renderCatalog(this.currentCatalogType); 
-        window.scrollTo(0, 0); 
+    changePage(direction) {
+        this.currentPage += direction;
+        this.renderCatalog(this.currentCatalogType);
+        window.scrollTo(0, 0);
     }
 
     filterByGenre(genre) {
@@ -1118,7 +1321,8 @@ class OussaStreamApp {
         const inList = this.myList.includes(item.id);
         const heartClass = inList ? 'fas fa-heart active-heart' : 'far fa-heart';
         const prog = this.progress[item.id];
-        
+
+        // Card Action Logic
         const action = isContinue ? `app.playActiveMovieFromCard('${item.id}')` : `app.openDetails('${item.id}')`;
         const btnText = isContinue ? 'Resume' : 'Info';
         const playIcon = isContinue ? 'fa-play' : 'fa-info-circle';
@@ -1141,29 +1345,30 @@ class OussaStreamApp {
     }
 
     playActiveMovieFromCard(id) {
-         const all = [...this.movies, ...this.series];
-         const item = all.find(x => x.id === id);
-         if(item) {
-             this.activeContent = item;
-             this.playActiveMovie();
-         }
+        const all = [...this.movies, ...this.series];
+        const item = all.find(x => x.id === id);
+        if (item) {
+            this.activeContent = item;
+            this.playActiveMovie();
+        }
     }
 
-    // ====================================================================
-    // 15. DETAILS PAGE LOGIC
-    // ====================================================================
+
+    // ==========================================================================================
+    // SECTION 16: DETAILS PAGE LOGIC
+    // ==========================================================================================
 
     openDetails(id, fromHistory = false) {
         const all = [...this.movies, ...this.series];
         const item = all.find(x => x.id === id);
         if (!item) return;
-        
+
         this.activeContent = item;
         this.currentView = 'details';
-        
+
         if (!fromHistory) this.updateURL('details', id);
 
-        // Populate HTML elements
+        // Populate Details DOM
         const hero = document.getElementById('detailHero');
         const bgImage = item.backdrop || item.poster;
         hero.style.backgroundImage = `url('${bgImage}')`;
@@ -1173,51 +1378,60 @@ class OussaStreamApp {
         document.getElementById('detailDesc').textContent = item.description || "No description available.";
         document.getElementById('detailYear').textContent = item.year || "N/A";
         document.getElementById('detailRating').innerHTML = `<i class="fas fa-star"></i> ${item.rating || "N/A"}`;
-        document.getElementById('detailGenre').textContent = item.genre || item.type.toUpperCase();
 
+        // Safe Genre Display
+        let genreText = "N/A";
+        if (item.genre) {
+            genreText = Array.isArray(item.genre) ? item.genre.join(', ') : String(item.genre).replace(/,/g, ', ');
+        } else if (item.type) {
+            genreText = String(item.type).toUpperCase();
+        }
+        document.getElementById('detailGenre').textContent = genreText;
+
+        // Button Logic
         const playBtn = document.getElementById('detailPlayBtn');
         const listBtn = document.getElementById('detailListBtn');
 
         playBtn.innerHTML = '<i class="fas fa-play"></i> Watch Now';
-        if(this.progress[item.id]) {
+        if (this.progress[item.id]) {
             playBtn.innerHTML = '<i class="fas fa-play"></i> Resume';
         }
 
         playBtn.onclick = () => this.playActiveMovie();
         this.updateDetailListBtn(item.id);
-        
-        listBtn.onclick = () => { 
-            this.toggleMyList(item.id); 
-            this.updateDetailListBtn(item.id); 
+
+        listBtn.onclick = () => {
+            this.toggleMyList(item.id);
+            this.updateDetailListBtn(item.id);
         };
 
         this.cancelEdit();
-        
-        // --- FETCH REVIEWS ---
+
+        // Fetch Reviews & Related
         this.fetchReviews(id);
-        
         this.updateReviewUI(!!this.user);
-        this.renderRelated(item.type, item.id, 'detailRelatedGrid');
+        this.renderRelated(item, 'detailRelatedGrid');
 
         this.switchView('detailsPage');
     }
 
-    updateDetailListBtn(id) { 
-        const btn = document.getElementById('detailListBtn'); 
-        if (this.myList.includes(id)) { 
-            btn.innerHTML = '<i class="fas fa-check"></i> Added'; 
-            btn.classList.add('btn-light'); 
-            btn.classList.remove('btn-outline-light'); 
-        } else { 
-            btn.innerHTML = '<i class="far fa-heart"></i> My List'; 
-            btn.classList.add('btn-outline-light'); 
-            btn.classList.remove('btn-light'); 
-        } 
+    updateDetailListBtn(id) {
+        const btn = document.getElementById('detailListBtn');
+        if (this.myList.includes(id)) {
+            btn.innerHTML = '<i class="fas fa-check"></i> Added';
+            btn.classList.add('btn-light');
+            btn.classList.remove('btn-outline-light');
+        } else {
+            btn.innerHTML = '<i class="far fa-heart"></i> My List';
+            btn.classList.add('btn-outline-light');
+            btn.classList.remove('btn-light');
+        }
     }
 
-    // ====================================================================
-    // 16. PLAYBACK HANDLER (MOVIES & SERIES)
-    // ====================================================================
+
+    // ==========================================================================================
+    // SECTION 17: PLAYBACK & SOURCES
+    // ==========================================================================================
 
     playActiveMovie() {
         if (!this.activeContent) return;
@@ -1227,10 +1441,11 @@ class OussaStreamApp {
 
         this.switchView('playerPage');
         this.currentView = 'player';
-        this.updateURL('player', item.id); 
+        this.updateURL('player', item.id);
 
         this.setupPlayerUI();
 
+        // Auto Landscape on Mobile
         if (window.innerWidth < 768) {
             this.enterFullscreenAndRotate();
         }
@@ -1238,28 +1453,36 @@ class OussaStreamApp {
         if (playerTitle) playerTitle.textContent = `Now Watching: ${item.title}`;
 
         const prog = this.progress[item.id];
-        
+
+        // Logic for Series (Seasons/Episodes)
         if (item.type === 'series' || (item.seasons && item.seasons.length > 0)) {
             controls.classList.remove('hidden');
             const sSelect = document.getElementById('seasonSelect');
             const eSelect = document.getElementById('episodeSelect');
 
             if (item.seasons && item.seasons.length > 0) {
+                // Populate Seasons
                 sSelect.innerHTML = item.seasons.map(s => `<option value="${s.seasonNumber || 1}">Season ${s.seasonNumber || 1}</option>`).join('');
-                
-                if(prog && prog.season) {
+
+                // Restore Season
+                if (prog && prog.season) {
                     sSelect.value = prog.season;
                 }
-                
-                this.onSeasonChange(); 
-                
-                if(prog && prog.episodeUrl) {
+
+                // Populate Episodes
+                this.onSeasonChange();
+
+                // Restore Episode
+                if (prog && prog.episodeUrl) {
                     eSelect.value = prog.episodeUrl;
                 }
-                
-                this.playEpisode(); 
+
+                // Play
+                this.playEpisode();
             }
-        } else {
+        }
+        // Logic for Movies
+        else {
             controls.classList.add('hidden');
             this.setPlayerSource(item.videoUrl);
         }
@@ -1275,13 +1498,14 @@ class OussaStreamApp {
             return;
         }
 
+        // Determine if Source is Embed (Iframe) or Direct Video
         const isEmbed = url.includes('/e/') || url.includes('myvidplay') || url.includes('dood') || url.includes('pixel');
 
         if (isEmbed) {
             if (this.player) this.player.stop();
             if (plyrContainer) plyrContainer.style.display = 'none';
             if (rawVideo) rawVideo.style.display = 'none';
-            
+
             if (embedPlayer) {
                 embedPlayer.classList.remove('hidden');
                 embedPlayer.style.display = 'block';
@@ -1296,12 +1520,13 @@ class OussaStreamApp {
             if (plyrContainer) plyrContainer.style.display = 'block';
             if (rawVideo) rawVideo.style.display = 'block';
 
+            // Check if YouTube
             const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
             this.player.source = {
                 type: 'video',
                 sources: [{ src: url, provider: isYouTube ? 'youtube' : 'html5' }]
             };
-            
+
             setTimeout(() => this.player.play(), 500);
         }
     }
@@ -1319,16 +1544,16 @@ class OussaStreamApp {
         }
     }
 
-    playEpisode() { 
-        const url = document.getElementById('episodeSelect').value; 
-        if (url) this.setPlayerSource(url); 
+    playEpisode() {
+        const url = document.getElementById('episodeSelect').value;
+        if (url) this.setPlayerSource(url);
     }
 
     closePlayer() {
         if (this.player) this.player.stop();
         const embedPlayer = document.querySelector('#playerPage iframe');
         if (embedPlayer) embedPlayer.src = '';
-        
+
         this.exitFullscreenAndRotate();
         this.stopPlayerUiTimer();
         document.body.style.overflow = 'auto';
@@ -1342,9 +1567,10 @@ class OussaStreamApp {
         }
     }
 
-    // ====================================================================
-    // 17. PLAYER UI UTILITIES
-    // ====================================================================
+
+    // ==========================================================================================
+    // SECTION 18: PLAYER UI UTILITIES
+    // ==========================================================================================
 
     setupPlayerUI() {
         const playerPage = document.getElementById('playerPage');
@@ -1387,7 +1613,7 @@ class OussaStreamApp {
             if (playerPage.requestFullscreen) {
                 await playerPage.requestFullscreen();
             } else if (playerPage.webkitRequestFullscreen) {
-                await playerPage.webkitRequestFullscreen(); 
+                await playerPage.webkitRequestFullscreen();
             }
 
             if (screen.orientation && screen.orientation.lock) {
@@ -1404,7 +1630,7 @@ class OussaStreamApp {
         }
 
         if (document.fullscreenElement || document.webkitFullscreenElement) {
-             if (document.exitFullscreen) {
+            if (document.exitFullscreen) {
                 document.exitFullscreen().catch(err => console.log(err));
             } else if (document.webkitExitFullscreen) {
                 document.webkitExitFullscreen();
@@ -1422,9 +1648,10 @@ class OussaStreamApp {
         });
     }
 
-    // ====================================================================
-    // 18. REVIEWS SYSTEM (FIXED & EXPANDED)
-    // ====================================================================
+
+    // ==========================================================================================
+    // SECTION 19: REVIEWS SYSTEM (FIXED & ROBUST)
+    // ==========================================================================================
 
     updateReviewUI(isLoggedIn) {
         const inputContainer = document.getElementById('reviewInputContainer');
@@ -1433,7 +1660,7 @@ class OussaStreamApp {
         if (isLoggedIn) {
             inputContainer.classList.remove('hidden');
             loginContainer.classList.add('hidden');
-            
+
             const name = this.user.displayName || (this.user.email ? this.user.email.split('@')[0] : 'User');
             document.getElementById('userReviewName').textContent = name;
 
@@ -1483,28 +1710,27 @@ class OussaStreamApp {
     }
 
     /**
-     * FETCH REVIEWS with Fixes:
-     * 1. Detaches previous listener to avoid conflicts.
-     * 2. Handles null data correctly.
-     * 3. Renders reviews cleanly.
+     * fetchReviews(contentId)
+     * Retrieves reviews from Firebase.
+     * Includes safeguards against duplicate listeners and missing data.
      */
     fetchReviews(contentId) {
         const reviewsContainer = document.getElementById('reviewsList');
-        
-        // Clear previous listener if exists
+
+        // Detach old listener to prevent memory leaks and UI bugs
         if (this.currentReviewsRef) {
             this.currentReviewsRef.off();
         }
 
         reviewsContainer.innerHTML = '<p class="text-gray-small">Loading reviews...</p>';
 
-        // Set new reference
+        // Set up new reference
         this.currentReviewsRef = this.db.ref('reviews/' + contentId);
-        
+
         this.currentReviewsRef.on('value', snap => {
             const data = snap.val();
-            
-            // Handle No Reviews
+
+            // Handle Case: No Reviews
             if (!data) {
                 this.activeReviews = [];
                 reviewsContainer.innerHTML = '<p class="text-gray-small">No reviews yet. Be the first to review!</p>';
@@ -1514,26 +1740,26 @@ class OussaStreamApp {
                 return;
             }
 
-            // Convert Object to Array
-            this.activeReviews = Object.entries(data).map(([key, value]) => ({ 
-                id: key, 
-                ...value 
-            })).sort((a, b) => b.timestamp - a.timestamp); // Sort Newest First
+            // Transform data object to array
+            this.activeReviews = Object.entries(data).map(([key, value]) => ({
+                id: key,
+                ...value
+            })).sort((a, b) => b.timestamp - a.timestamp); // Newest First
 
-            // Calculate Average Rating
+            // Calculate Average Rating dynamically
             const total = this.activeReviews.reduce((sum, r) => sum + parseInt(r.rating), 0);
             const avg = (total / this.activeReviews.length).toFixed(1);
 
             document.getElementById('detailRating').innerHTML = `<i class="fas fa-star"></i> ${avg} (${this.activeReviews.length})`;
 
-            // Render Reviews HTML
+            // Render Reviews
             reviewsContainer.innerHTML = this.activeReviews.map(r => {
-                let userAvatarHtml = r.userAvatar 
-                    ? `<img src="${r.userAvatar}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;">` 
+                let userAvatarHtml = r.userAvatar
+                    ? `<img src="${r.userAvatar}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;">`
                     : `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--primary); border-radius: 4px;">${r.userName.charAt(0).toUpperCase()}</div>`;
-                
+
                 let actionsHtml = '';
-                // Add Delete/Edit buttons if current user owns the review
+                // Only show Edit/Delete if the review belongs to the current user
                 if (this.user && r.userId === this.user.uid) {
                     actionsHtml = `
                         <div class="review-actions mt-2 text-end">
@@ -1571,11 +1797,31 @@ class OussaStreamApp {
         return html;
     }
 
+    /**
+     * submitReview(e)
+     * Handles the creation or update of a review.
+     * Contains robust error handling and validation.
+     * CRITICAL FIX: Changed timestamp to ServerValue.TIMESTAMP to pass security rules.
+     */
     submitReview(e) {
         e.preventDefault();
-        if (!this.user || !this.activeContent) return;
+        console.log(" [Reviews] Submitting review...");
 
-        // Prevent Duplicate Reviews (unless editing)
+        // 1. Validation: User must be logged in
+        if (!this.user) {
+            this.showToast("You must be signed in to review.");
+            this.openAuthModal();
+            return;
+        }
+
+        // 2. Validation: Content must be loaded
+        if (!this.activeContent || !this.activeContent.id) {
+            console.error(" [Reviews] No active content found.");
+            this.showToast("Error: Content not loaded.");
+            return;
+        }
+
+        // 3. Validation: Prevent duplicates (unless editing)
         if (!this.editingReviewId) {
             const existingReview = this.activeReviews.find(r => r.userId === this.user.uid);
             if (existingReview) {
@@ -1584,6 +1830,7 @@ class OussaStreamApp {
             }
         }
 
+        // 4. Input Validation
         const rating = document.getElementById('ratingValue').value;
         const text = document.getElementById('reviewText').value;
 
@@ -1592,28 +1839,49 @@ class OussaStreamApp {
             return;
         }
 
+        // Prepare Data
+        // FIX: Using ServerValue.TIMESTAMP is critical for database security rules
         const reviewData = {
             userId: this.user.uid,
-            userName: this.user.displayName || this.user.email.split('@')[0],
-            userAvatar: this.avatar,
+            userName: this.user.displayName || (this.user.email ? this.user.email.split('@')[0] : 'User'),
+            userAvatar: this.avatar || "",
             rating: parseInt(rating),
             text: text,
-            timestamp: Date.now()
+            timestamp: firebase.database.ServerValue.TIMESTAMP
         };
 
+        // 5. Database Operation
         if (this.editingReviewId) {
-            // Update Existing
+            // Update Existing Review
             this.db.ref('reviews/' + this.activeContent.id + '/' + this.editingReviewId).update(reviewData)
                 .then(() => {
                     this.showToast("Review Updated!");
                     this.cancelEdit();
+                })
+                .catch((error) => {
+                    console.error(" [Reviews] Update Failed:", error);
+                    if (error.code === 'PERMISSION_DENIED') {
+                        this.showToast("Permission Denied: Database Rules Blocked Update.");
+                    } else {
+                        this.showToast("Failed to update: " + error.message);
+                    }
                 });
         } else {
-            // Create New
-            this.db.ref('reviews/' + this.activeContent.id).push().set(reviewData).then(() => {
-                this.showToast("Review Posted!");
-                this.cancelEdit();
-            });
+            // Create New Review (Using push(data) for safety)
+            this.db.ref('reviews/' + this.activeContent.id).push(reviewData)
+                .then(() => {
+                    this.showToast("Review Posted!");
+                    this.cancelEdit();
+                })
+                .catch((error) => {
+                    console.error(" [Reviews] Post Failed:", error);
+                    // Helpful message for permission errors
+                    if (error.code === 'PERMISSION_DENIED') {
+                        this.showToast("Permission Denied: Check Database Rules");
+                    } else {
+                        this.showToast("Failed to post: " + error.message);
+                    }
+                });
         }
     }
 
@@ -1670,19 +1938,27 @@ class OussaStreamApp {
             .then(() => {
                 this.showToast("Review Deleted");
                 if (this.editingReviewId === reviewId) this.cancelEdit();
+            })
+            .catch((error) => {
+                if (error.code === 'PERMISSION_DENIED') {
+                    this.showToast("Permission Denied: Check Database Rules");
+                } else {
+                    this.showToast("Delete failed: " + error.message);
+                }
             });
     }
 
-    // ====================================================================
-    // 19. GLOBAL UI RENDERERS
-    // ====================================================================
 
-    renderNewContent() { 
-        const container = document.getElementById('newContentGrid'); 
-        if (!container) return; 
-        
-        const all = [...this.movies, ...this.series].sort((a, b) => b.year - a.year).slice(0, 6); 
-        container.innerHTML = all.map(i => this.createCard(i)).join(''); 
+    // ==========================================================================================
+    // SECTION 20: GLOBAL UI RENDERERS
+    // ==========================================================================================
+
+    renderNewContent() {
+        const container = document.getElementById('newContentGrid');
+        if (!container) return;
+
+        const all = [...this.movies, ...this.series].sort((a, b) => b.year - a.year).slice(0, 6);
+        container.innerHTML = all.map(i => this.createCard(i)).join('');
     }
 
     renderHeroCarousel() {
@@ -1734,10 +2010,10 @@ class OussaStreamApp {
         const container = document.getElementById('continueGrid');
         const section = document.getElementById('continueWatchingSection');
         if (!container || !section) return;
-        
+
         // Wait for data
         const all = [...this.movies, ...this.series];
-        if(all.length === 0) return;
+        if (all.length === 0) return;
 
         const progressIds = Object.keys(this.progress).sort((a, b) => {
             return (this.progress[b].lastUpdated || 0) - (this.progress[a].lastUpdated || 0);
@@ -1745,54 +2021,81 @@ class OussaStreamApp {
 
         const list = progressIds.map(id => all.find(item => item.id === id)).filter(Boolean);
 
-        if (list.length > 0) { 
-            section.classList.remove('hidden'); 
-            container.innerHTML = list.map(i => this.createCard(i, true)).join(''); 
-        } else { 
-            section.classList.add('hidden'); 
+        if (list.length > 0) {
+            section.classList.remove('hidden');
+            container.innerHTML = list.map(i => this.createCard(i, true)).join('');
+        } else {
+            section.classList.add('hidden');
         }
     }
 
-    renderMyList() { 
-        const container = document.getElementById('myListGrid'); 
-        if (!container) return; 
-        
-        const all = [...this.movies, ...this.series]; 
-        const listItems = all.filter(item => this.myList.includes(item.id)); 
-        
-        container.innerHTML = listItems.length > 0 
-            ? listItems.map(i => this.createCard(i)).join('') 
-            : '<p class="text-center w-100 mt-5 text-gray-small">List is empty.</p>'; 
+    renderMyList() {
+        const container = document.getElementById('myListGrid');
+        if (!container) return;
+
+        const all = [...this.movies, ...this.series];
+        const listItems = all.filter(item => this.myList.includes(item.id));
+
+        container.innerHTML = listItems.length > 0
+            ? listItems.map(i => this.createCard(i)).join('')
+            : '<p class="text-center w-100 mt-5 text-gray-small">List is empty.</p>';
     }
 
-    renderRelated(genre, currentId, containerId = 'detailRelatedGrid') { 
-        const container = document.getElementById(containerId); 
-        if (!container) return; 
-        
-        const all = [...this.movies, ...this.series]; 
-        const related = all.filter(item => item.id !== currentId && item.type.toLowerCase() === genre.toLowerCase()).slice(0, 4); 
-        
-        container.innerHTML = related.map(i => this.createCard(i)).join(''); 
+    renderRelated(currentItem, containerId = 'detailRelatedGrid') {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const all = [...this.movies, ...this.series];
+
+        // Safe parsing for multiple categories
+        const genreStr = currentItem.genre ? String(currentItem.genre) : "";
+        const currentGenres = genreStr.toLowerCase().split(',').map(g => g.trim()).filter(g => g.length > 0);
+
+        const related = all.filter(item => {
+            // Exclude self
+            if (item.id === currentItem.id) return false;
+            // Match Type
+            if (item.type !== currentItem.type) return false;
+
+            // If no genres, just match type
+            if (currentGenres.length === 0) return true;
+
+            const itemGenres = String(item.genre || "").toLowerCase();
+            // Check for intersection
+            return currentGenres.some(genre => itemGenres.includes(genre));
+        }).slice(0, 4);
+
+        if (related.length === 0) {
+            const fallback = all.filter(item => item.id !== currentItem.id && item.type === currentItem.type).slice(0, 4);
+            container.innerHTML = fallback.map(i => this.createCard(i)).join('');
+        } else {
+            container.innerHTML = related.map(i => this.createCard(i)).join('');
+        }
     }
 
-    // ====================================================================
-    // 20. UTILITY FUNCTIONS
-    // ====================================================================
 
-    showToast(msg) { 
-        const container = document.getElementById('toastContainer'); 
-        const toast = document.createElement('div'); 
-        toast.className = 'custom-toast'; 
-        toast.textContent = msg; 
-        container.appendChild(toast); 
-        setTimeout(() => toast.remove(), 3500); 
+    // ==========================================================================================
+    // SECTION 21: UTILITY FUNCTIONS & HELPERS
+    // ==========================================================================================
+
+    showToast(msg) {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = 'custom-toast';
+        toast.textContent = msg;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 3500);
     }
 
-    handleNavbarScroll() { 
-        const nav = document.getElementById('mainNavbar'); 
-        window.onscroll = () => nav.classList.toggle('scrolled', window.scrollY > 80); 
+    handleNavbarScroll() {
+        const nav = document.getElementById('mainNavbar');
+        window.onscroll = () => nav.classList.toggle('scrolled', window.scrollY > 80);
     }
 
+    /**
+     * escapeHtml(text)
+     * Sanitizes input to prevent XSS attacks when rendering user content.
+     */
     escapeHtml(text) {
         if (!text) return text;
         return text
@@ -1809,5 +2112,7 @@ class OussaStreamApp {
     }
 }
 
-// Start Application
+// ==========================================================================================
+// START APPLICATION
+// ==========================================================================================
 const app = new OussaStreamApp();
