@@ -3,8 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>OussaStream</title>
     <link rel="icon" type="image/png" href="https://i.ibb.co/MD3HFP46/Untitled-Design-1-Edited-Edited.png">
 
@@ -19,14 +18,15 @@
     <!-- Plyr CSS -->
     <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
     <link rel="stylesheet" href="style.css">
-    <!-- Prevent browsers from guessing content type (sniffing) -->
+
+    <!-- Security & PWA Tags -->
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta name="referrer" content="origin-when-cross-origin">
 
-    <!-- PWA Helper for Fullscreen -->
+    <!-- Mobile Web App Capable -->
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
 </head>
 
 <body>
@@ -115,7 +115,6 @@
             </div>
         </section>
 
-        <!-- Collections Section (Hidden on Mobile via CSS) -->
         <section class="section" id="collectionsSection">
             <div class="container">
                 <h2 class="section-title">Popular Genres</h2>
@@ -144,14 +143,12 @@
                 class="catalog-header d-flex flex-column flex-md-row justify-content-between align-items-center mb-5 gap-3">
                 <h2 class="section-title mb-0" id="pageTitle"
                     style="border-left: none; padding-left: 0; font-size: 2.5rem;">Browse</h2>
-
                 <div class="search-container">
                     <i class="fas fa-search search-icon-inside"></i>
                     <input type="text" id="searchInput" class="modern-search-input"
                         placeholder="Search titles, genres...">
                 </div>
             </div>
-
             <!-- Filters Bar -->
             <div class="filters-bar mb-5">
                 <div class="row g-3">
@@ -160,17 +157,6 @@
                             <label class="filter-mini-label">Genre</label>
                             <select id="genreSelect" class="modern-select">
                                 <option value="all">All Genres</option>
-                                <option value="Action">Action</option>
-                                <option value="Adventure">Adventure</option>
-                                <option value="Comedy">Comedy</option>
-                                <option value="Crime">Crime</option>
-                                <option value="Drama">Drama</option>
-                                <option value="Fantasy">Fantasy</option>
-                                <option value="Horror">Horror</option>
-                                <option value="Sci-Fi">Sci-Fi</option>
-                                <option value="Thriller">Thriller</option>
-                                <option value="Romance">Romance</option>
-                                <option value="Anime">Anime</option>
                             </select>
                             <i class="fas fa-chevron-down select-arrow"></i>
                         </div>
@@ -197,7 +183,6 @@
                     </div>
                 </div>
             </div>
-
             <div class="content-grid" id="catalogGrid"></div>
             <div class="pagination-container mt-5" id="paginationControls"></div>
         </div>
@@ -232,7 +217,6 @@
                         </div>
                         <p id="detailDesc" class="lead mb-4"
                             style="max-width: 800px; color: #ddd; font-size: 1.1rem; line-height: 1.6;"></p>
-
                         <div class="action-buttons mb-5 d-flex flex-column flex-md-row gap-3">
                             <button id="detailPlayBtn" class="hero-btn hero-btn-play">
                                 <i class="fas fa-play"></i> Watch Now
@@ -245,13 +229,11 @@
                 </div>
             </div>
         </div>
-
         <!-- REVIEWS & RELATED -->
         <div class="container section pt-0 related-section">
             <div class="row">
                 <div class="col-md-8">
                     <h3 class="section-title">Reviews & Ratings</h3>
-
                     <div id="reviewInputContainer" class="review-box mb-4">
                         <div class="d-flex align-items-center gap-3 mb-3">
                             <div class="review-avatar-small" id="userReviewAvatar">U</div>
@@ -276,10 +258,8 @@
                         <p class="text-gray-small mb-3">Please sign in to rate and review.</p>
                         <button class="btn btn-outline-light btn-sm" onclick="app.openAuthModal()">Sign In</button>
                     </div>
-
                     <div id="reviewsList" class="reviews-list"></div>
                 </div>
-
                 <div class="col-md-4 mt-5 mt-md-0">
                     <h3 class="section-title">More Like This</h3>
                     <div class="content-grid-small" id="detailRelatedGrid"></div>
@@ -288,7 +268,7 @@
         </div>
     </div>
 
-    <!-- NEW PLAYER PAGE -->
+    <!-- PLAYER PAGE -->
     <div id="playerPage" class="player-page hidden">
         <div class="player-header">
             <button class="player-back-btn" onclick="app.closePlayer()">
@@ -296,14 +276,12 @@
             </button>
             <h3 id="playerTitle" class="player-title">Now Watching</h3>
         </div>
-
         <div class="player-main-container">
             <div class="video-wrapper">
                 <video id="player" playsinline controls></video>
                 <iframe id="embedPlayer" class="hidden" frameborder="0" allowfullscreen></iframe>
             </div>
         </div>
-
         <!-- Next Episode Overlay -->
         <div id="nextEpOverlay" class="next-ep-overlay">
             <button id="nextEpBtn" class="next-ep-btn">
@@ -311,7 +289,7 @@
                 <i class="fas fa-forward"></i>
             </button>
         </div>
-
+        <!-- Series Controls -->
         <div id="seriesControls" class="series-controls hidden">
             <div class="container">
                 <div class="controls-glass-panel">
@@ -322,14 +300,13 @@
                         </div>
                         <div class="col-6 col-md-4">
                             <div class="custom-select-wrapper">
-                                <select id="seasonSelect" class="player-select"
-                                    onchange="app.onSeasonChange()"></select>
+                                <select id="seasonSelect" class="player-select"></select>
                                 <i class="fas fa-chevron-down"></i>
                             </div>
                         </div>
                         <div class="col-6 col-md-4">
                             <div class="custom-select-wrapper">
-                                <select id="episodeSelect" class="player-select" onchange="app.playEpisode()"></select>
+                                <select id="episodeSelect" class="player-select"></select>
                                 <i class="fas fa-play-circle"></i>
                             </div>
                         </div>
@@ -343,26 +320,51 @@
     <div id="authModal" class="modal">
         <div class="modal-content auth-modal-content">
             <button class="close-modal" onclick="app.closeAuthModal()"><i class="fas fa-times"></i></button>
+
             <div class="auth-box">
-                <h2 class="mb-4 fw-bold" id="authTitle">Sign In</h2>
+                <div class="text-center mb-4">
+                    <img src="https://i.ibb.co/MD3HFP46/Untitled-Design-1-Edited-Edited.png" alt="Logo"
+                        style="height: 50px; margin-bottom: 15px;">
+                    <h2 class="fw-bold mb-1 text-white" id="authTitle">Welcome Back</h2>
+                    <p class="small" style="color: #bbb;">Please enter your details to continue</p>
+                </div>
+
+                <div id="authErrorMsg" class="alert alert-danger p-2 mb-3 small"
+                    style="display: none; border-radius: 8px; background: rgba(229, 9, 20, 0.2); border: 1px solid var(--primary); color: #ffadad;">
+                </div>
+
                 <form id="authForm" onsubmit="app.handleAuth(event)">
                     <div class="mb-3">
-                        <input type="email" id="authEmail" class="form-control dark-input"
-                            placeholder="Email or phone number" required>
-                    </div>
-                    <div class="mb-3" id="passwordGroup">
-                        <input type="password" id="authPassword" class="form-control dark-input" placeholder="Password">
-                        <div class="text-end mt-2">
-                            <a href="#" class="text-gray-small text-decoration-none" style="font-size: 0.85rem;"
-                                id="forgotPasswordLink" onclick="app.toggleResetMode()">Forgot Password?</a>
+                        <label class="form-label small text-uppercase fw-bold">Email Address</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                            <input type="email" id="authEmail" class="form-control dark-input"
+                                placeholder="name@example.com" required>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-danger w-100 py-2 fw-bold mt-2" id="authSubmitBtn">Sign
-                        In</button>
-                    <div class="mt-4 text-gray-small" id="authSwitchContainer">
-                        <span id="authSwitchText">New to OussaStream? </span>
-                        <a href="#" class="text-white text-decoration-none fw-bold" onclick="app.toggleAuthMode()">Sign
-                            up now.</a>
+
+                    <div class="mb-4" id="passwordGroup">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label small text-uppercase fw-bold m-0">Password</label>
+                            <a href="#" class="text-primary text-decoration-none small fw-bold" id="forgotPasswordLink"
+                                onclick="app.toggleResetMode()" style="font-size: 0.8rem;">Forgot?</a>
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                            <input type="password" id="authPassword" class="form-control dark-input"
+                                placeholder="••••••••" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-lg" id="authSubmitBtn"
+                        style="border-radius: 8px;">
+                        Sign In
+                    </button>
+
+                    <div class="mt-4 text-center small" id="authSwitchContainer">
+                        <span id="authSwitchText" style="color: #bbb;">New to OussaStream? </span>
+                        <a href="#" class="text-white text-decoration-none fw-bold ms-1"
+                            onclick="app.toggleAuthMode()">Create an account</a>
                     </div>
                 </form>
             </div>
@@ -410,16 +412,14 @@
         </div>
     </div>
 
-    <!-- Footer -->
+    <!-- UPDATED FOOTER -->
     <footer class="footer">
         <div class="container">
-            <div class="row align-items-center">
-                <div class="col-md-6 text-center text-md-start">
-                    <img src="https://i.ibb.co/MD3HFP46/Untitled-Design-1-Edited-Edited.png" alt="OussaStream"
-                        class="footer-logo" onclick="app.showHome()">
-                </div>
-                <div class="col-md-6 text-center text-md-end">
-                    <p class="mb-0 text-gray-small">&copy; 2025 OussaStream. Created by Oussama ait salem.</p>
+            <div class="row justify-content-center">
+                <div class="col-12 text-center">
+                    <p class="mb-0 text-muted" style="font-size: 0.9rem; opacity: 0.8;">
+                        &copy; 2026 OussaStream. All Rights Reserved.
+                    </p>
                 </div>
             </div>
         </div>
